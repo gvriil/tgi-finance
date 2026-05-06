@@ -727,9 +727,12 @@ function drawMembersList(editId){
   list.innerHTML=!_EM.length?'<div style="font-size:11px;color:var(--muted);margin-bottom:5px">Нет участников — нажмите «Добавить участника»</div>':
     _EM.map(function(id){
       var m=field.find(function(x){return x.id===id;});if(!m)return'';
+      var hh=wHourlyH(m);
+      var hourlyTag=hh?'<span style="font-size:10px;color:var(--amber);margin-left:4px">⏱ '+hh+'ч</span>':'';
       return'<div style="display:flex;align-items:center;gap:6px;background:var(--ibg);border:1px solid var(--border);border-radius:6px;padding:5px 9px;margin-bottom:4px;font-size:12px">'+
-        '<span style="flex:1;font-weight:500">'+esc(m.name)+'</span>'+
+        '<span style="flex:1;font-weight:500">'+esc(m.name)+hourlyTag+'</span>'+
         '<span style="font-family:\'IBM Plex Mono\',monospace;color:var(--muted);font-size:10px">'+fmt(wPos(m))+' поз · '+fmt(wAct(m))+' ₽</span>'+
+        '<button class="bi" title="Редактировать" onclick="editMember(\''+id+'\')">✏️</button>'+
         '<button class="bi del" onclick="remMember(\''+id+'\')">×</button></div>';
     }).join('');
   // populate selector: all workers that are not already in a group and not the current leader
@@ -742,6 +745,15 @@ function addMember(){
   _EM.push(id);drawMembersList(document.getElementById('mf-id').value);sel.value='';updPayTotal();
 }
 function remMember(id){_EM=_EM.filter(function(x){return x!==id;});drawMembersList(document.getElementById('mf-id').value);updPayTotal();}
+function editMember(id){
+  // Save current leader state first, then open member modal
+  var leaderId=document.getElementById('mf-id').value;
+  var lastDate=_EP.length?_EP[_EP.length-1].date:'';
+  var leaderObj={id:leaderId||uid(),name:document.getElementById('mf-name').value,email:document.getElementById('mf-email').value,positions:JSON.parse(JSON.stringify(_ER)),paysFor:[].concat(_EM),payments:JSON.parse(JSON.stringify(_EP)),hourlyWork:JSON.parse(JSON.stringify(_EH)),date:lastDate,note:document.getElementById('mf-note').value};
+  if(leaderId){var li=field.findIndex(function(x){return x.id===leaderId;});if(li>=0)field[li]=leaderObj;}
+  closeModal('m-field');
+  openFldModal(id,true);
+}
 
 // --- Выплаты ---
 function drawPays(){
