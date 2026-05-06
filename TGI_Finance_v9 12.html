@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>TGI·Finance v9</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+[data-theme="dark"]{--bg:#0c0f18;--panel:#131825;--card:#181e2e;--border:#222c46;--text:#dde2f0;--muted:#4e5f88;--accent:#4f7dff;--green:#3ecf8e;--red:#f86c6c;--amber:#f5a623;--purple:#a78bfa;--teal:#22d3ee;--ibg:#0e1220;--hov:rgba(255,255,255,.025);--shad:0 2px 16px rgba(0,0,0,.5);--mbg:#131825;--sub:#131825;--subrow:#0e1320}
+[data-theme="light"]{--bg:#eef0f7;--panel:#fff;--card:#fff;--border:#d5daea;--text:#1a1e2e;--muted:#8890b0;--accent:#2f5eff;--green:#1aaa6a;--red:#e03e3e;--amber:#d4820a;--purple:#7c55e0;--teal:#0891b2;--ibg:#f3f5fb;--hov:rgba(0,0,0,.02);--shad:0 2px 10px rgba(0,0,0,.07);--mbg:#fff;--sub:#f8f9fd;--subrow:#f0f3fa}
+html,body{height:100%;font-family:'IBM Plex Sans',sans-serif;font-size:13px;background:var(--bg);color:var(--text)}
+.app{display:grid;grid-template-rows:50px 1fr;height:100vh}
+/* TOP BAR */
+.topbar{background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;justify-content:space-between;gap:12px;box-shadow:var(--shad);z-index:10}
+.logo{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--accent);white-space:nowrap}
+.logo em{color:var(--muted);font-style:normal}
+.tabs{display:flex;gap:1px}
+.tab{padding:4px 12px;border-radius:5px;cursor:pointer;font-size:12px;color:var(--muted);border:none;background:transparent;font-family:inherit;font-weight:500;transition:.12s}
+.tab:hover{color:var(--text)}.tab.act{background:var(--card);color:var(--text);box-shadow:var(--shad)}
+.tr{display:flex;gap:6px;align-items:center}
+.tog-wrap{display:flex;align-items:center;gap:5px;font-size:12px}
+.tog{position:relative;width:38px;height:20px;cursor:pointer;background:var(--border);border-radius:10px;border:none;flex-shrink:0}
+.tog::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:.2s}
+[data-theme="light"] .tog::after{transform:translateX(18px);background:var(--accent)}
+.sep{width:1px;height:16px;background:var(--border)}
+/* PAGES */
+.body{overflow:hidden}
+.page{display:none;height:calc(100vh - 50px);overflow-y:auto;padding:16px}
+.page.act{display:block}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:.12s;white-space:nowrap}
+.bp{background:var(--accent);color:#fff}.bp:hover{opacity:.85}
+.bg{background:transparent;color:var(--muted);border:1px solid var(--border)}.bg:hover{color:var(--text);border-color:var(--muted)}
+.bi{background:transparent;color:var(--muted);border:none;cursor:pointer;padding:2px 5px;border-radius:4px;font-size:13px;line-height:1}
+.bi:hover{color:var(--text);background:var(--hov)}.bi.del:hover{color:var(--red)}
+/* KPI */
+.krow{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:8px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:11px 13px}
+.kpi-l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.kpi-v{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600}
+.kpi-s{font-size:10px;color:var(--muted);margin-top:2px}
+.kc .kpi-v{color:var(--green)}.kr .kpi-v{color:var(--red)}.ka .kpi-v{color:var(--amber)}.kb .kpi-v{color:var(--accent)}
+/* SECTION */
+.sec{background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;box-shadow:var(--shad)}
+.sh{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-bottom:1px solid var(--border)}
+.sh h3{font-size:12px;font-weight:600}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--panel);padding:6px 9px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);white-space:nowrap}
+th.r{text-align:right}
+td{padding:6px 9px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr.hov:hover td{background:var(--hov)}
+tr.sub td{background:var(--subrow);font-size:11px}
+tr.sub:hover td{background:var(--hov)}
+.tf{padding:8px 13px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+/* PILLS */
+.pill{display:inline-block;padding:1px 6px;border-radius:7px;font-size:10px;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.pg{background:rgba(62,207,142,.12);color:var(--green)}.pa{background:rgba(245,166,35,.12);color:var(--amber)}
+.pn{background:rgba(248,108,108,.1);color:var(--red)}.pp{background:rgba(79,125,255,.1);color:var(--accent)}
+.ps{background:rgba(167,139,250,.12);color:var(--purple)}.pt{background:rgba(34,211,238,.1);color:var(--teal)}
+select.sty{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 7px;font-size:11px;font-family:inherit}
+.srch{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 9px;font-size:12px;width:200px;font-family:inherit}
+/* DASH SUMMARY */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sb{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:11px 13px;margin-bottom:10px}
+.sb-t{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:7px}
+.sr{display:flex;justify-content:space-between;align-items:center;padding:2px 0;font-size:11px}
+.sr .sl{color:var(--muted)}.sr .sv{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500}
+.sr.tot{padding-top:6px;margin-top:4px;border-top:1px solid var(--border)}
+.sr.tot .sl{color:var(--text);font-weight:600;font-size:12px}.sr.tot .sv{font-size:13px}
+/* MODAL */
+.ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto}
+.ovl.open{display:flex}
+.modal{background:var(--mbg);border:1px solid var(--border);border-radius:12px;padding:20px;width:580px;max-width:96vw;margin-bottom:40px;box-shadow:0 12px 60px rgba(0,0,0,.5)}
+.mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.mh h3{font-size:14px;font-weight:600}
+.m2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.m3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.mf{display:flex;gap:7px;justify-content:flex-end;margin-top:14px;border-top:1px solid var(--border);padding-top:12px}
+.lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px}
+.inp{background:var(--ibg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px;font-family:inherit;outline:none;width:100%;transition:border .15s}
+.inp:focus{border-color:var(--accent)}
+.inp.r{text-align:right;font-family:'IBM Plex Mono',monospace}
+.fl{display:flex;align-items:center;gap:7px}
+.fl.w{flex-wrap:wrap}
+.sec-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px 0 5px}
+/* POSITIONS TABLE in modal */
+.ptbl{width:100%;border-collapse:collapse;margin-bottom:7px}
+.ptbl th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;padding:3px 5px;border-bottom:1px solid var(--border);text-align:left;font-weight:600}
+.ptbl th.r{text-align:right}
+.ptbl td{padding:3px 4px;border-bottom:1px solid var(--border)}
+.ptbl tr:last-child td{border-bottom:none}
+.ptbl input{background:var(--ibg);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 6px;font-size:12px;width:100%;outline:none}
+.ptbl input:focus{border-color:var(--accent)}
+.ptbl input.r{text-align:right;font-family:'IBM Plex Mono',monospace}
+/* PAYMENT TABLE in modal */
+.pay-row{display:grid;grid-template-columns:108px 95px 1fr 26px;gap:5px;align-items:center;margin-bottom:4px}
+.pay-hdr{display:grid;grid-template-columns:108px 95px 1fr 26px;gap:5px;margin-bottom:3px}
+.pay-hdr span{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.pay-row input,.pay-row select{background:var(--ibg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 7px;font-size:12px;font-family:inherit;outline:none;width:100%}
+.pay-row input:focus,.pay-row select:focus{border-color:var(--accent)}
+.pay-row input.r{text-align:right;font-family:'IBM Plex Mono',monospace}
+/* ALLOC TABLE in modal */
+.alloc-row{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-radius:5px;font-size:11px}
+.alloc-row:nth-child(odd){background:var(--hov)}
+.alloc-name{color:var(--muted);flex:1}
+.alloc-pct{color:var(--muted);width:45px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:10px}
+.alloc-amt{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--purple);width:80px;text-align:right}
+/* INFO BOXES */
+.ibox{border-radius:6px;padding:7px 10px;font-size:11px;margin-bottom:10px}
+.ibox-blue{background:rgba(79,125,255,.07);border:1px solid rgba(79,125,255,.2)}
+.ibox-green{background:rgba(62,207,142,.07);border:1px solid rgba(62,207,142,.2)}
+.ibox-amber{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2)}
+.ibox-purple{background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2)}
+.ibox-row{display:flex;justify-content:space-between;align-items:center;padding:1.5px 0}
+.ibox-row .ik{color:var(--muted)}.ibox-row .iv{font-family:'IBM Plex Mono',monospace;font-weight:500}
+.ibox-row.tot{padding-top:5px;margin-top:3px;border-top:1px solid rgba(255,255,255,.06);font-weight:600}
+.mono{font-family:'IBM Plex Mono',monospace}
+/* EXPAND TOGGLE */
+.exp-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:2px 4px;border-radius:4px;line-height:1}
+.exp-btn:hover{color:var(--text);background:var(--hov)}
+.member-tag{display:inline-flex;align-items:center;gap:3px;background:rgba(167,139,250,.1);color:var(--purple);border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px}
+</style>
+<style>:is([id*='google_ads_iframe'],[id*='taboola-'],.taboolaHeight,.taboola-placeholder,#top-ad,#credential_picker_container,#credentials-picker-container,#credential_picker_iframe,[id*='google-one-tap-iframe'],#google-one-tap-popup-container,.google-one-tap__module,.google-one-tap-modal-div,#amp_floatingAdDiv,#ez-content-blocker-container) {display:none!important;min-height:0!important;height:0!important;}</style><style>:is([id*='google_ads_iframe'],[id*='taboola-'],.taboolaHeight,.taboola-placeholder,#top-ad,#credential_picker_container,#credentials-picker-container,#credential_picker_iframe,[id*='google-one-tap-iframe'],#google-one-tap-popup-container,.google-one-tap__module,.google-one-tap-modal-div,#amp_floatingAdDiv,#ez-content-blocker-container) {display:none!important;min-height:0!important;height:0!important;}</style><style>:is([id*='google_ads_iframe'],[id*='taboola-'],.taboolaHeight,.taboola-placeholder,#top-ad,#credential_picker_container,#credentials-picker-container,#credential_picker_iframe,[id*='google-one-tap-iframe'],#google-one-tap-popup-container,.google-one-tap__module,.google-one-tap-modal-div,#amp_floatingAdDiv,#ez-content-blocker-container) {display:none!important;min-height:0!important;height:0!important;}</style></head>
+<body>
+<div class="app">
+<div class="topbar">
+  <div class="fl" style="gap:12px">
+    <div class="logo">TGI<em>·</em>Finance <em style="font-size:10px">v9</em></div>
+    <div class="tabs">
+      <button class="tab" onclick="switchTab('dash',this)">Сводка</button>
+      <button class="tab" onclick="switchTab('income',this)">Приход</button>
+      <button class="tab act" onclick="switchTab('field',this)">Полевые</button>
+      <button class="tab" onclick="switchTab('expense',this)">Расходы</button>
+      <button class="tab" onclick="switchTab('bank',this)">🏦 Банк</button>
+    </div>
+  </div>
+  <div class="tr">
+    <div class="tog-wrap"><span>🌙</span><button class="tog" onclick="toggleTheme()"></button><span>☀️</span></div>
+    <div class="sep"></div>
+    <button class="btn bg" onclick="openModal('m-export')">⬇ Excel</button>
+    <button class="btn bp" id="bsave" onclick="saveAll()">💾 Сохранить</button>
+    <button class="btn bg" onclick="exportJSON()" title="Скачать резервную копию JSON">📤</button>
+    <button class="btn bg" onclick="importJSON()" title="Загрузить из JSON">📥</button>
+  </div>
+</div>
+<div class="body">
+
+<!-- СВОДКА -->
+<div class="page" id="page-dash">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+    <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Период:</span>
+    <button class="btn bg act-p" onclick="setPeriod('all',this)">Всё время</button>
+    <button class="btn bg" onclick="setPeriod('today',this)">Сегодня</button>
+    <button class="btn bg" onclick="setPeriod('week',this)">Неделя</button>
+    <button class="btn bg" onclick="setPeriod('month',this)">Месяц</button>
+    <button class="btn bg" onclick="setPeriod('quarter',this)">Квартал</button>
+    <div style="width:1px;height:16px;background:var(--border)"></div>
+    <input type="date" class="inp" id="pd-from" style="width:130px;padding:4px 7px;font-size:11px" onchange="setPeriod('custom',null)">
+    <input type="date" class="inp" id="pd-to" style="width:130px;padding:4px 7px;font-size:11px" onchange="setPeriod('custom',null)">
+  </div>
+  <div class="krow" id="krow"><div class="kpi kg"><div class="kpi-l">Приход нетто</div><div class="kpi-v">3&nbsp;110&nbsp;800 ₽</div><div class="kpi-s">нал 460&nbsp;000 + б/нал 2&nbsp;820&nbsp;000</div></div><div class="kpi kb"><div class="kpi-l">УСН 6%</div><div class="kpi-v">169&nbsp;200 ₽</div><div class="kpi-s">от безнала 2&nbsp;820&nbsp;000 ₽</div></div><div class="kpi kr"><div class="kpi-l">Выплачено полевым</div><div class="kpi-v">2&nbsp;282&nbsp;664 ₽</div><div class="kpi-s">начислено 2&nbsp;040&nbsp;070 ₽</div></div><div class="kpi ka"><div class="kpi-l">Долг полевым</div><div class="kpi-v">0 ₽</div><div class="kpi-s">4 чел.</div></div><div class="kpi kr"><div class="kpi-l">Расходы</div><div class="kpi-v">1&nbsp;261&nbsp;150 ₽</div><div class="kpi-s">за период</div></div><div class="kpi kr"><div class="kpi-l">Перерасход</div><div class="kpi-v">-433&nbsp;014 ₽</div><div class="kpi-s">реально: -433&nbsp;014 ₽</div></div></div>
+  <div class="sg">
+    <div>
+      <div class="sb">
+        <div class="sb-t">Приход от заказчика</div>
+        <div class="sr"><span class="sl">💵 Наличные</span><span class="sv green" id="s-ic">460&nbsp;000 ₽</span></div>
+        <div class="sr"><span class="sl">🏦 Безнал</span><span class="sv" style="color:var(--accent)" id="s-ib">2&nbsp;820&nbsp;000 ₽</span></div>
+        <div class="sr"><span class="sl">УСН 6%</span><span class="sv red" id="s-usn">−169&nbsp;200 ₽</span></div>
+        <div class="sr tot"><span class="sl">Нетто</span><span class="sv green" id="s-in">3&nbsp;110&nbsp;800 ₽</span></div>
+      </div>
+      <div class="sb">
+        <div class="sb-t">Расчёты с полевыми</div>
+        <div class="sr"><span class="sl">Начислено (30/40/50₽)</span><span class="sv" id="s-fa">2&nbsp;040&nbsp;070 ₽</span></div>
+        <div class="sr"><span class="sl">💵 Выплачено нал</span><span class="sv green" id="s-fc">348&nbsp;500 ₽</span></div>
+        <div class="sr"><span class="sl">💳 Перевод</span><span class="sv" style="color:var(--teal)" id="s-ft">192&nbsp;524 ₽</span></div>
+        <div class="sr"><span class="sl">🟣 Самозанятым</span><span class="sv" style="color:var(--purple)" id="s-fs">1&nbsp;741&nbsp;640 ₽</span></div>
+        <div class="sr tot"><span class="sl">Задолженность</span><span class="sv red" id="s-fd">0 ₽</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="sb">
+        <div class="sb-t">Прочие расходы</div>
+        <div class="sr"><span class="sl">📦 Расходники</span><span class="sv red" id="s-em">0 ₽</span></div>
+        <div class="sr"><span class="sl">⏱ Почасовые</span><span class="sv red" id="s-eh">16&nbsp;150 ₽</span></div>
+        <div class="sr"><span class="sl">📅 Подённые</span><span class="sv red" id="s-ed">25&nbsp;000 ₽</span></div>
+        <div class="sr"><span class="sl">🔒 Фиксированные</span><span class="sv red" id="s-ef">1&nbsp;220&nbsp;000 ₽</span></div>
+        <div class="sr tot"><span class="sl">Итого</span><span class="sv red" id="s-et">1&nbsp;261&nbsp;150 ₽</span></div>
+      </div>
+      <div class="sb" style="border-color:var(--accent)">
+        <div class="sb-t" style="color:var(--accent)">Итоговый баланс</div>
+        <div class="sr"><span class="sl">Приход нетто</span><span class="sv green" id="s-bi">3&nbsp;110&nbsp;800 ₽</span></div>
+        <div class="sr"><span class="sl">− Выплачено полевым</span><span class="sv red" id="s-bf">−2&nbsp;282&nbsp;664 ₽</span></div>
+        <div class="sr"><span class="sl">− Расходы</span><span class="sv red" id="s-be">−1&nbsp;261&nbsp;150 ₽</span></div>
+        <div class="sr"><span class="sl">− УСН 6%</span><span class="sv red" id="s-bu">−169&nbsp;200 ₽</span></div>
+        <div class="sr tot"><span class="sl">На руках</span><span class="sv" id="s-bal" style="color: var(--red);">-433&nbsp;014 ₽</span></div>
+        <div class="sr" style="padding-top:5px"><span class="sl">Ещё должны полевым</span><span class="sv amber" id="s-bdf">0 ₽</span></div>
+        <div class="sr tot"><span class="sl">Реальный остаток</span><span class="sv" id="s-br" style="color: var(--red);">-433&nbsp;014 ₽</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ПРИХОД -->
+<div class="page" id="page-income">
+  <div class="fl w" style="margin-bottom:10px;gap:7px">
+    <button class="btn bp" onclick="openIncModal()">+ Добавить</button>
+    <select class="sty" id="inc-ft" onchange="renderIncome()" data-ddg-inputtype="unknown"><option value="">Все типы</option><option value="cash">💵 Нал</option><option value="bank">🏦 Безнал</option></select>
+    <input class="srch" id="inc-q" placeholder="Поиск…" oninput="renderIncome()" data-ddg-inputtype="unknown">
+  </div>
+  <div class="sec">
+    <div class="sh"><h3>Поступления</h3></div>
+    <div class="tw"><table><thead><tr>
+      <th style="width:95px">Дата</th><th>Источник</th><th style="width:80px">Тип</th>
+      <th class="r" style="width:110px">Сумма, ₽</th><th class="r" style="width:90px">УСН 6%</th>
+      <th class="r" style="width:95px">Нетто, ₽</th><th>Примечание</th><th style="width:50px"></th>
+    </tr></thead><tbody id="tb-income"><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">15.02.2026</td><td><b> ООО “СЕВЕРАУРУС"</b></td><td><span class="pill pg">💵 Нал</span></td><td class="r mono">200&nbsp;000</td><td class="r mono" style="color:var(--red)">—</td><td class="r mono" style="color:var(--green)">200&nbsp;000</td><td style="font-size:11px;color:var(--muted)"></td><td style="text-align:right"><button class="bi" onclick="openIncModal('_5nstav9')">✏️</button><button class="bi del" onclick="delInc('_5nstav9')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">15.03.2026</td><td><b> ООО “СЕВЕРАУРУС"</b></td><td><span class="pill pp">🏦 Безнал</span></td><td class="r mono">320&nbsp;000</td><td class="r mono" style="color:var(--red)">−19&nbsp;200</td><td class="r mono" style="color:var(--green)">300&nbsp;800</td><td style="font-size:11px;color:var(--muted)">СЧЁТ №1 на оплату услуг: «Консультация и разработка технического задания для электронной системы инвентаризации»</td><td style="text-align:right"><button class="bi" onclick="openIncModal('_blo4eld')">✏️</button><button class="bi del" onclick="delInc('_blo4eld')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">04.03.2026</td><td><b> ООО “СЕВЕРАУРУС"</b></td><td><span class="pill pp">🏦 Безнал</span></td><td class="r mono">1&nbsp;000&nbsp;000</td><td class="r mono" style="color:var(--red)">−60&nbsp;000</td><td class="r mono" style="color:var(--green)">940&nbsp;000</td><td style="font-size:11px;color:var(--muted)">Счёт на оплату № 3 от 04.03.2026 оплата по ЛИЦЕНЗИОННОМУ ДОГОВОР № 02.03.26/2 на право использования программного обеспечения</td><td style="text-align:right"><button class="bi" onclick="openIncModal('_ly4rvny')">✏️</button><button class="bi del" onclick="delInc('_ly4rvny')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">11.02.2026</td><td><b> ООО “СЕВЕРАУРУС"</b></td><td><span class="pill pg">💵 Нал</span></td><td class="r mono">60&nbsp;000</td><td class="r mono" style="color:var(--red)">—</td><td class="r mono" style="color:var(--green)">60&nbsp;000</td><td style="font-size:11px;color:var(--muted)">Оплата инфраструктуры</td><td style="text-align:right"><button class="bi" onclick="openIncModal('_up4yijy')">✏️</button><button class="bi del" onclick="delInc('_up4yijy')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">13.03.2026</td><td><b> ООО “СЕВЕРАУРУС"</b></td><td><span class="pill pg">💵 Нал</span></td><td class="r mono">200&nbsp;000</td><td class="r mono" style="color:var(--red)">—</td><td class="r mono" style="color:var(--green)">200&nbsp;000</td><td style="font-size:11px;color:var(--muted)"></td><td style="text-align:right"><button class="bi" onclick="openIncModal('_xuf6al5')">✏️</button><button class="bi del" onclick="delInc('_xuf6al5')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">13.03.2026</td><td><b> ООО “СЕВЕРАУРУС"</b></td><td><span class="pill pp">🏦 Безнал</span></td><td class="r mono">500&nbsp;000</td><td class="r mono" style="color:var(--red)">−30&nbsp;000</td><td class="r mono" style="color:var(--green)">470&nbsp;000</td><td style="font-size:11px;color:var(--muted)">Счёт на оплату № 2 от 04.03.2026 50%</td><td style="text-align:right"><button class="bi" onclick="openIncModal('_kkwi8y6')">✏️</button><button class="bi del" onclick="delInc('_kkwi8y6')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">29.04.2026</td><td><b> ООО “СЕВЕРАУРУС"</b></td><td><span class="pill pp">🏦 Безнал</span></td><td class="r mono">1&nbsp;000&nbsp;000</td><td class="r mono" style="color:var(--red)">−60&nbsp;000</td><td class="r mono" style="color:var(--green)">940&nbsp;000</td><td style="font-size:11px;color:var(--muted)">Счёт № 4 от 28.03.2026, Оплата по Договору №0328 от 25.03.2026 за оказание услуг по проведению инвентаризации движимого имущества (г. Москва).. НДС не облагается.</td><td style="text-align:right"><button class="bi" onclick="openIncModal('_ct5tj9a')">✏️</button><button class="bi del" onclick="delInc('_ct5tj9a')">×</button></td></tr></tbody></table></div>
+    <div class="tf" id="tf-income"><b>7</b> записей &nbsp;|&nbsp; Нал: <b class="mono">460&nbsp;000</b> ₽ &nbsp; Безнал: <b class="mono">2&nbsp;820&nbsp;000</b> ₽ &nbsp; УСН: <b class="mono" style="color:var(--red)">−169&nbsp;200</b> ₽ &nbsp; Нетто: <b class="mono" style="color:var(--green)">3&nbsp;110&nbsp;800</b> ₽</div>
+  </div>
+</div>
+
+<!-- ПОЛЕВЫЕ -->
+<div class="page act" id="page-field">
+  <div class="fl w" style="margin-bottom:10px;gap:7px">
+    <button class="btn bp" onclick="openFldModal(null,false)">+ Добавить</button>
+    <button class="btn bg" onclick="importPayroll()">📂 Импорт реестра</button>
+    <button class="btn bg" onclick="syncInventory()">📊 Синк позиций</button>
+    <button class="btn bg" onclick="exportPerWorker()">📤 По исполнителю</button>
+    <select class="sty" id="fld-ft" onchange="renderField()" data-ddg-inputtype="unknown"><option value="">Все</option><option value="ok">✓ Оплачено</option><option value="part">Частично</option><option value="debt">Долг</option></select>
+    <input class="srch" id="fld-q" placeholder="Поиск…" oninput="renderField()" data-ddg-inputtype="unknown">
+  </div>
+  <div class="sec">
+    <div class="sh"><h3>Расчёты с полевыми <span id="fld-note" style="font-size:10px;color:var(--muted);font-weight:400;margin-left:6px">(участники скрыты — раскрыть ▶)</span><span id="sync-badge" style="font-size:10px;color:var(--teal);margin-left:8px;font-family:'IBM Plex Mono',monospace">📊&nbsp;52&nbsp;546&nbsp;поз&nbsp;·&nbsp;2&nbsp;040&nbsp;070&nbsp;₽</span></h3></div>
+    <div class="tw"><table><thead><tr>
+      <th style="width:22px"></th>
+      <th>ФИО</th>
+      <th style="width:155px">Email</th>
+      <th class="r" style="width:78px">Позиций</th>
+      <th class="r" style="width:100px">Начислено</th>
+      <th class="r" style="width:78px">Нал</th>
+      <th class="r" style="width:85px">Перевод</th>
+      <th class="r" style="width:90px">Самозан.</th>
+      <th class="r" style="width:85px">Остаток</th>
+      <th style="width:68px">Статус</th>
+      <th style="width:50px"></th>
+    </tr></thead><tbody id="tb-field"><tr class="hov"><td><button class="exp-btn" data-eid="_hmyfush" onclick="toggleExpand(this.dataset.eid)" title="Развернуть">▶ </button></td><td><b>Бурмистров Артём Витальевич</b><span class="member-tag">группа · 2 чел.</span></td><td style="font-size:11px;color:var(--muted)">artemdj@gmail.com</td><td class="r mono">7&nbsp;104</td><td class="r mono" style="font-weight:500">268&nbsp;810 ₽</td><td class="r">—</td><td class="r">—</td><td class="r"><span class="pill ps">259&nbsp;200</span></td><td class="r mono" style="color:var(--red);">9&nbsp;610 ₽</td><td><span class="pill pa">частично</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_hmyfush',false)">✏️</button></td></tr><tr class="hov"><td></td><td><b>Быков Михаил Юрьевич</b></td><td style="font-size:11px;color:var(--muted)">micknick@yandex.ru</td><td class="r mono">9&nbsp;210</td><td class="r mono" style="font-weight:500">371&nbsp;760 ₽</td><td class="r"><span class="pill pg">24&nbsp;250</span></td><td class="r"><span class="pill pt">2&nbsp;460</span></td><td class="r"><span class="pill ps">345&nbsp;050</span></td><td class="r mono" style="color:var(--muted);">—</td><td><span class="pill pg">✓ ok</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_11oaunt',false)">✏️</button><button class="bi del" onclick="delFld('_11oaunt')">×</button></td></tr><tr class="hov"><td></td><td><b>Волов Денис Александрович</b></td><td style="font-size:11px;color:var(--muted)">ant80@bk.ru</td><td class="r mono">182</td><td class="r mono" style="font-weight:500">7&nbsp;280 ₽</td><td class="r"><span class="pill pg">150&nbsp;000</span></td><td class="r"><span class="pill pt">7&nbsp;240</span></td><td class="r">—</td><td class="r mono" style="color:var(--amber);">перепл.</td><td><span class="pill pg">✓ ok</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_u64wrdo',false)">✏️</button><button class="bi del" onclick="delFld('_u64wrdo')">×</button></td></tr><tr class="hov"><td><button class="exp-btn" data-eid="_m4xe309" onclick="toggleExpand(this.dataset.eid)" title="Развернуть">▶ </button></td><td><b>Гайгер Анна Сергеевна</b><span class="member-tag">группа · 2 чел.</span></td><td style="font-size:11px;color:var(--muted)">annagaiger@icloud.com</td><td class="r mono">7&nbsp;013</td><td class="r mono" style="font-weight:500">256&nbsp;540 ₽</td><td class="r"><span class="pill pg">25&nbsp;000</span></td><td class="r"><span class="pill pt">6&nbsp;320</span></td><td class="r"><span class="pill ps">225&nbsp;220</span></td><td class="r mono" style="color:var(--muted);">—</td><td><span class="pill pg">✓ ok</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_m4xe309',false)">✏️</button></td></tr><tr class="hov"><td></td><td><b>Гусева Елена</b></td><td style="font-size:11px;color:var(--muted)">lena_lopert@mail.ru</td><td class="r mono">5&nbsp;948</td><td class="r mono" style="font-weight:500">223&nbsp;190 ₽</td><td class="r">—</td><td class="r"><span class="pill pt">68&nbsp;560</span></td><td class="r"><span class="pill ps">154&nbsp;630</span></td><td class="r mono" style="color:var(--muted);">—</td><td><span class="pill pg">✓ ok</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_g3j9wtd',false)">✏️</button><button class="bi del" onclick="delFld('_g3j9wtd')">×</button></td></tr><tr class="hov"><td></td><td><b>Гусева Наталия Владимировна</b></td><td style="font-size:11px;color:var(--muted)">nataliya-guseva@yandex.ru</td><td class="r mono">2&nbsp;208</td><td class="r mono" style="font-weight:500">93&nbsp;980 ₽</td><td class="r"><span class="pill pg">60&nbsp;000</span></td><td class="r"><span class="pill pt">26&nbsp;394</span></td><td class="r">—</td><td class="r mono" style="color:var(--red);">7&nbsp;586 ₽</td><td><span class="pill pa">частично</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_j416avg',false)">✏️</button><button class="bi del" onclick="delFld('_j416avg')">×</button></td></tr><tr class="hov"><td><button class="exp-btn" data-eid="_guxrdco" onclick="toggleExpand(this.dataset.eid)" title="Развернуть">▶ </button></td><td><b>Кашаров Филип</b><span class="member-tag">группа · 1 чел.</span></td><td style="font-size:11px;color:var(--muted)">philippkasharov@gmail.com</td><td class="r mono">462</td><td class="r mono" style="font-weight:500">18&nbsp;480 ₽</td><td class="r">—</td><td class="r">—</td><td class="r"><span class="pill ps">18&nbsp;480</span></td><td class="r mono" style="color:var(--muted);">—</td><td><span class="pill pg">✓ ok</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_guxrdco',false)">✏️</button></td></tr><tr class="hov"><td></td><td><b>Козловская Ирина</b></td><td style="font-size:11px;color:var(--muted)">iriko1105@gmail.com</td><td class="r mono">3&nbsp;118</td><td class="r mono" style="font-weight:500">114&nbsp;610 ₽</td><td class="r"><span class="pill pg">40&nbsp;000</span></td><td class="r"><span class="pill pt">81&nbsp;550</span></td><td class="r"><span class="pill ps">80&nbsp;000</span></td><td class="r mono" style="color:var(--amber);">перепл.</td><td><span class="pill pg">✓ ok</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_6nwttgk',false)">✏️</button><button class="bi del" onclick="delFld('_6nwttgk')">×</button></td></tr><tr class="hov"><td></td><td><b>Кузнецов Михаил Денисович</b></td><td style="font-size:11px;color:var(--muted)">kuzneczov.mixail.00@bk.ru</td><td class="r mono">1&nbsp;682</td><td class="r mono" style="font-weight:500">67&nbsp;280 ₽</td><td class="r">—</td><td class="r">—</td><td class="r"><span class="pill ps">65&nbsp;920</span></td><td class="r mono" style="color:var(--red);">1&nbsp;360 ₽</td><td><span class="pill pa">частично</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_bqfm5k2',false)">✏️</button><button class="bi del" onclick="delFld('_bqfm5k2')">×</button></td></tr><tr class="hov"><td></td><td><b>Лукин Максим Евгеньевич</b></td><td style="font-size:11px;color:var(--muted)">maximlukim@gmail.com</td><td class="r mono">763</td><td class="r mono" style="font-weight:500">30&nbsp;520 ₽</td><td class="r">—</td><td class="r">—</td><td class="r"><span class="pill ps">30&nbsp;520</span></td><td class="r mono" style="color:var(--muted);">—</td><td><span class="pill pg">✓ ok</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_0w7vzby',false)">✏️</button><button class="bi del" onclick="delFld('_0w7vzby')">×</button></td></tr><tr class="hov"><td></td><td><b>Садчикова Светлана Юрьевна</b></td><td style="font-size:11px;color:var(--muted)">tysatt@mail.ru</td><td class="r mono">888</td><td class="r mono" style="font-weight:500">35&nbsp;520 ₽</td><td class="r">—</td><td class="r">—</td><td class="r"><span class="pill ps">35&nbsp;520</span></td><td class="r mono" style="color:var(--muted);">—</td><td><span class="pill pg">✓ ok</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_bgruz9r',false)">✏️</button><button class="bi del" onclick="delFld('_bgruz9r')">×</button></td></tr><tr class="hov"><td><button class="exp-btn" data-eid="_yv3y929" onclick="toggleExpand(this.dataset.eid)" title="Свернуть">▼ </button></td><td><b>Худоенков Алексей Андреевич</b><span class="member-tag">группа · 2 чел.</span></td><td style="font-size:11px;color:var(--muted)">djduhov@mail.ru</td><td class="r mono">13&nbsp;968</td><td class="r mono" style="font-weight:500">552&nbsp;100 ₽</td><td class="r"><span class="pill pg">25&nbsp;000</span></td><td class="r">—</td><td class="r"><span class="pill ps">527&nbsp;100</span></td><td class="r mono" style="color:var(--amber);">перепл.</td><td><span class="pill pg">✓ ok</span></td><td style="text-align:right"><button class="bi" onclick="openFldModal('_yv3y929',false)">✏️</button></td></tr><tr class="sub"><td></td><td colspan="10" style="padding:6px 10px 8px 22px"><div style="background:rgba(79,125,255,.07);border:1px solid rgba(79,125,255,.2);border-radius:7px;padding:10px 14px"><div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:8px">Худоенков — кому передать:</div><table style="width:100%;border-collapse:collapse"><tbody><tr style="font-size:9px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px"><td style="padding-bottom:5px">Сотрудник</td><td style="text-align:right;padding-bottom:5px;padding-right:8px">Тариф / позиций</td><td style="text-align:right;padding-bottom:5px;padding-right:8px">Итого поз.</td><td style="text-align:right;padding-bottom:5px;padding-right:8px">Начислено</td><td style="text-align:right;padding-bottom:5px;font-weight:700;color:var(--text)">К передаче</td></tr><tr style="border-top:1px solid var(--border)"><td style="padding:4px 8px 4px 0;font-weight:600">Худоенков Алексей Андреевич</td><td style="text-align:right;padding:4px 8px;color:var(--muted);font-size:10px;font-family:monospace">30₽×949 + 40₽×2&nbsp;252</td><td style="text-align:right;padding:4px 8px;font-family:monospace;font-weight:600">3&nbsp;201</td><td style="text-align:right;padding:4px 8px;font-family:monospace">118&nbsp;550 ₽</td><td style="text-align:right;padding:4px 0;font-family:monospace;font-weight:700">118&nbsp;550 ₽</td></tr><tr style="border-top:1px solid var(--border)"><td style="padding:4px 8px 4px 0;color:var(--muted)">Самарцев Евгений Викторович</td><td style="text-align:right;padding:4px 8px;color:var(--muted);font-size:10px;font-family:monospace">30₽×967 + 40₽×3&nbsp;704 + 50₽×2&nbsp;115</td><td style="text-align:right;padding:4px 8px;font-family:monospace">6&nbsp;786</td><td style="text-align:right;padding:4px 8px;font-family:monospace">282&nbsp;920 ₽</td><td style="text-align:right;padding:4px 0;font-family:monospace;font-weight:700;color:var(--purple);">258&nbsp;670 ₽</td></tr><tr style="border-top:1px solid var(--border)"><td style="padding:4px 8px 4px 0;color:var(--muted)">Александрова Татьяна</td><td style="text-align:right;padding:4px 8px;color:var(--muted);font-size:10px;font-family:monospace">30₽×861 + 40₽×3&nbsp;120</td><td style="text-align:right;padding:4px 8px;font-family:monospace">3&nbsp;981</td><td style="text-align:right;padding:4px 8px;font-family:monospace">150&nbsp;630 ₽</td><td style="text-align:right;padding:4px 0;font-family:monospace;font-weight:700;color:var(--purple);">150&nbsp;630 ₽</td></tr><tr style="border-top:2px solid var(--border)"><td style="padding:5px 8px 2px 0;font-weight:700">Итого</td><td></td><td style="text-align:right;padding:5px 8px 2px;font-family:monospace;font-weight:700">13&nbsp;968</td><td style="text-align:right;padding:5px 8px 2px;font-family:monospace;font-weight:700">552&nbsp;100 ₽</td><td style="text-align:right;padding:5px 0 2px;font-family:monospace;font-weight:700;color:var(--accent)">552&nbsp;100 ₽</td></tr></tbody></table><div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border);font-size:10px;color:var(--muted)">Получено от Гавриила: <b style="color:var(--green)">552&nbsp;100 ₽</b>  &nbsp;|&nbsp; <b style="color:var(--green)">✓ Получено полностью</b></div></div></td></tr><tr class="sub"><td></td><td style="padding-left:22px"><span style="color:var(--muted);margin-right:5px">↳</span>Самарцев Евгений Викторович<button class="bi" style="font-size:11px;margin-left:5px" data-mid="_ybmt2w1" onclick="openFldModal(this.dataset.mid,true)" title="Карточка">✏️</button></td><td style="font-size:11px;color:var(--muted)">samartsevev@yandex.ru</td><td class="r mono">6&nbsp;786</td><td class="r mono" style="font-weight:600">282&nbsp;920 ₽</td><td colspan="2" style="text-align:left;padding-left:6px;font-size:10px;color:var(--muted);font-family:monospace">30₽×967 + 40₽×3&nbsp;704 + 50₽×2&nbsp;115</td><td style="text-align:center;font-size:11px;color:var(--muted)">через Худоенков</td><td class="r mono" style="color:var(--purple);font-weight:600">282&nbsp;920 ₽</td><td></td></tr><tr class="sub"><td></td><td style="padding-left:22px"><span style="color:var(--muted);margin-right:5px">↳</span>Александрова Татьяна<button class="bi" style="font-size:11px;margin-left:5px" data-mid="_z5io382" onclick="openFldModal(this.dataset.mid,true)" title="Карточка">✏️</button></td><td style="font-size:11px;color:var(--muted)">talexandrova8@gmail.com</td><td class="r mono">3&nbsp;981</td><td class="r mono" style="font-weight:600">150&nbsp;630 ₽</td><td colspan="2" style="text-align:left;padding-left:6px;font-size:10px;color:var(--muted);font-family:monospace">30₽×861 + 40₽×3&nbsp;120</td><td style="text-align:center;font-size:11px;color:var(--muted)">через Худоенков</td><td class="r mono" style="color:var(--purple);font-weight:600">150&nbsp;630 ₽</td><td></td></tr></tbody></table></div>
+    <div class="tf" id="tf-field"><b>12</b> чел. &nbsp; Поз.: <b class="mono">52&nbsp;546</b> &nbsp; Нач.: <b class="mono">2&nbsp;040&nbsp;070</b> ₽ &nbsp; Нал: <b class="mono" style="color:var(--green)">324&nbsp;250</b> &nbsp; Перевод: <b class="mono" style="color:var(--teal)">192&nbsp;524</b> &nbsp; Самозан.: <b class="mono" style="color:var(--purple)">1&nbsp;741&nbsp;640</b> &nbsp; Долг: <b class="mono" style="color:var(--red)">0</b> ₽</div>
+  </div>
+</div>
+
+<!-- РАСХОДЫ -->
+<div class="page" id="page-expense">
+  <div class="fl w" style="margin-bottom:10px;gap:7px">
+    <button class="btn bp" onclick="openExpModal()">+ Добавить</button>
+    <select class="sty" id="exp-ft" onchange="renderExpenses()" data-ddg-inputtype="unknown"><option value="">Все</option><option value="mat">📦 Расходники</option><option value="hour">⏱ Почасовой</option><option value="day">📅 Подённый</option><option value="fix">🔒 Фиксированный</option></select>
+    <input class="srch" id="exp-q" placeholder="Поиск…" oninput="renderExpenses()" data-ddg-inputtype="unknown">
+  </div>
+  <div class="sec">
+    <div class="sh"><h3>Прочие расходы</h3></div>
+    <div class="tw"><table><thead><tr>
+      <th style="width:95px">Дата</th><th style="width:110px">Тип</th><th>Описание</th>
+      <th class="r" style="width:70px">Кол-во</th><th style="width:60px">Ед.</th>
+      <th class="r" style="width:100px">Цена, ₽</th><th class="r" style="width:110px">Итого, ₽</th>
+      <th>Примечание</th><th style="width:50px"></th>
+    </tr></thead><tbody id="tb-expense"><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">15.03.2026</td><td>📅 Подённый</td><td><b>Маневич Г. верификация удаленно</b></td><td class="r mono">5</td><td style="color:var(--muted);font-size:11px">день</td><td class="r mono">5&nbsp;000</td><td class="r mono" style="font-weight:600;color:var(--red)">25&nbsp;000 ₽</td><td style="font-size:11px;color:var(--muted)">перевод через Гайгер</td><td style="text-align:right"><button class="bi" onclick="openExpModal('_322wg2z')">✏️</button><button class="bi del" onclick="delExp('_322wg2z')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">14.03.2026</td><td>🔒 Фиксир.</td><td><b>Ярошенко А.В.</b></td><td class="r mono">1</td><td style="color:var(--muted);font-size:11px">услуга</td><td class="r mono">320&nbsp;000</td><td class="r mono" style="font-weight:600;color:var(--red)">320&nbsp;000 ₽</td><td style="font-size:11px;color:var(--muted)"></td><td style="text-align:right"><button class="bi" onclick="openExpModal('_ymaccxf')">✏️</button><button class="bi del" onclick="delExp('_ymaccxf')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">15.03.2026</td><td>🔒 Фиксир.</td><td><b>Ярошенко А.В.</b></td><td class="r mono">1</td><td style="color:var(--muted);font-size:11px">услуга</td><td class="r mono">100&nbsp;000</td><td class="r mono" style="font-weight:600;color:var(--red)">100&nbsp;000 ₽</td><td style="font-size:11px;color:var(--muted)"></td><td style="text-align:right"><button class="bi" onclick="openExpModal('_ju7uu32')">✏️</button><button class="bi del" onclick="delExp('_ju7uu32')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">15.03.2026</td><td>⏱ Почасовой</td><td><b>Ирина верификация</b></td><td class="r mono">1</td><td style="color:var(--muted);font-size:11px">час</td><td class="r mono">5&nbsp;000</td><td class="r mono" style="font-weight:600;color:var(--red)">5&nbsp;000 ₽</td><td style="font-size:11px;color:var(--muted)"></td><td style="text-align:right"><button class="bi" onclick="openExpModal('_gdeblen')">✏️</button><button class="bi del" onclick="delExp('_gdeblen')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">15.03.2026</td><td>⏱ Почасовой</td><td><b>Быков верификация</b></td><td class="r mono">2</td><td style="color:var(--muted);font-size:11px">час</td><td class="r mono">1&nbsp;000</td><td class="r mono" style="font-weight:600;color:var(--red)">2&nbsp;000 ₽</td><td style="font-size:11px;color:var(--muted)"></td><td style="text-align:right"><button class="bi" onclick="openExpModal('_qwq7me0')">✏️</button><button class="bi del" onclick="delExp('_qwq7me0')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">15.03.2026</td><td>⏱ Почасовой</td><td><b>Самарцев верификация</b></td><td class="r mono">1</td><td style="color:var(--muted);font-size:11px">час</td><td class="r mono">1&nbsp;000</td><td class="r mono" style="font-weight:600;color:var(--red)">1&nbsp;000 ₽</td><td style="font-size:11px;color:var(--muted)"></td><td style="text-align:right"><button class="bi" onclick="openExpModal('_idsuty9')">✏️</button><button class="bi del" onclick="delExp('_idsuty9')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">15.03.2026</td><td>⏱ Почасовой</td><td><b>Гайгер верификация</b></td><td class="r mono">1</td><td style="color:var(--muted);font-size:11px">час</td><td class="r mono">325</td><td class="r mono" style="font-weight:600;color:var(--red)">325 ₽</td><td style="font-size:11px;color:var(--muted)"></td><td style="text-align:right"><button class="bi" onclick="openExpModal('_q4qtorm')">✏️</button><button class="bi del" onclick="delExp('_q4qtorm')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">16.03.2026</td><td>⏱ Почасовой</td><td><b>Асанова верификация</b></td><td class="r mono">1</td><td style="color:var(--muted);font-size:11px">час</td><td class="r mono">325</td><td class="r mono" style="font-weight:600;color:var(--red)">325 ₽</td><td style="font-size:11px;color:var(--muted)"></td><td style="text-align:right"><button class="bi" onclick="openExpModal('_hov0tj8')">✏️</button><button class="bi del" onclick="delExp('_hov0tj8')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">16.03.2026</td><td>🔒 Фиксир.</td><td><b>Бордюков</b></td><td class="r mono">1</td><td style="color:var(--muted);font-size:11px">услуга</td><td class="r mono">200&nbsp;000</td><td class="r mono" style="font-weight:600;color:var(--red)">200&nbsp;000 ₽</td><td style="font-size:11px;color:var(--muted)">аванс</td><td style="text-align:right"><button class="bi" onclick="openExpModal('_w8a8pj3')">✏️</button><button class="bi del" onclick="delExp('_w8a8pj3')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">16.03.2026</td><td>🔒 Фиксир.</td><td><b>Бордюков</b></td><td class="r mono">1</td><td style="color:var(--muted);font-size:11px">услуга</td><td class="r mono">200&nbsp;000</td><td class="r mono" style="font-weight:600;color:var(--red)">200&nbsp;000 ₽</td><td style="font-size:11px;color:var(--muted)">аванс</td><td style="text-align:right"><button class="bi" onclick="openExpModal('_wbxoevt')">✏️</button><button class="bi del" onclick="delExp('_wbxoevt')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">17.03.2026</td><td>⏱ Почасовой</td><td><b>Гусева Наталья Верификация озеленения</b></td><td class="r mono">10</td><td style="color:var(--muted);font-size:11px">час</td><td class="r mono">750</td><td class="r mono" style="font-weight:600;color:var(--red)">7&nbsp;500 ₽</td><td style="font-size:11px;color:var(--muted)"></td><td style="text-align:right"><button class="bi" onclick="openExpModal('_lhvvkth')">✏️</button><button class="bi del" onclick="delExp('_lhvvkth')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">07.03.2026</td><td>🔒 Фиксир.</td><td><b>Волов Д.А.</b></td><td class="r mono">1</td><td style="color:var(--muted);font-size:11px">услуга</td><td class="r mono">150&nbsp;000</td><td class="r mono" style="font-weight:600;color:var(--red)">150&nbsp;000 ₽</td><td style="font-size:11px;color:var(--muted)"></td><td style="text-align:right"><button class="bi" onclick="openExpModal('_f9ddclw')">✏️</button><button class="bi del" onclick="delExp('_f9ddclw')">×</button></td></tr><tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">11.04.2026</td><td>🔒 Фиксир.</td><td><b>Ярошенко А.В.</b></td><td class="r mono">1</td><td style="color:var(--muted);font-size:11px">услуга</td><td class="r mono">250&nbsp;000</td><td class="r mono" style="font-weight:600;color:var(--red)">250&nbsp;000 ₽</td><td style="font-size:11px;color:var(--muted)">оплата за модуль перемещения</td><td style="text-align:right"><button class="bi" onclick="openExpModal('_1u9ygzu')">✏️</button><button class="bi del" onclick="delExp('_1u9ygzu')">×</button></td></tr></tbody></table></div>
+    <div class="tf" id="tf-expense"><b>13</b> записей &nbsp; Итого: <b class="mono" style="color:var(--red)">1&nbsp;261&nbsp;150 ₽</b></div>
+  </div>
+</div>
+
+<!-- БАНК -->
+<div class="page" id="page-bank">
+  <div class="fl w" style="margin-bottom:10px;gap:7px">
+    <button class="btn bp" onclick="importBankFile()">📂 Загрузить выписку</button>
+    <span id="bank-period" style="font-size:11px;color:var(--muted);padding:4px 6px">04.03.2026 — 23.03.2026</span>
+  </div>
+  <div id="bank-kpi" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px"><div class="kpi kc"><div class="kpi-l">Поступления</div><div class="kpi-v" style="font-size:15px">2&nbsp;000&nbsp;000 ₽</div><div class="kpi-s">3 оп.</div></div><div class="kpi kr"><div class="kpi-l">Списания</div><div class="kpi-v" style="font-size:15px">1&nbsp;741&nbsp;531 ₽</div><div class="kpi-s">14 оп.</div></div><div class="kpi kp"><div class="kpi-l">Реестры</div><div class="kpi-v" style="font-size:15px">1&nbsp;241&nbsp;530 ₽</div><div class="kpi-s">12 реестров</div></div><div class="kpi ka"><div class="kpi-l">Не учтено</div><div class="kpi-v" style="font-size:15px">3 поступл.</div><div class="kpi-s">Требуют импорта</div></div></div>
+  <div class="sec">
+    <div class="sh" style="flex-wrap:wrap;gap:7px">
+      <h3>Операции по счёту</h3>
+      <div class="fl" style="gap:6px;flex-wrap:wrap">
+        <select class="sty" id="bk-ft" onchange="renderBank()">
+          <option value="">Все операции</option>
+          <option value="income">📥 Поступления</option>
+          <option value="payroll">🟣 Реестры</option>
+          <option value="withdraw">💸 Вывод</option>
+          <option value="bank_fee">🏦 Комиссия</option>
+          <option value="other">Прочее</option>
+        </select>
+        <select class="sty" id="bk-st" onchange="renderBank()">
+          <option value="">Все статусы</option>
+          <option value="ok">✓ Учтено</option>
+          <option value="new">⚠ Не учтено</option>
+        </select>
+        <button class="btn bp" id="btn-imp-sel" style="display: inline-flex;" onclick="importSelected()">📥 Импорт выбранных</button>
+      </div>
+    </div>
+    <div class="tw"><table><thead><tr>
+      <th style="width:26px"><input type="checkbox" id="chk-all" onchange="toggleAllChk(this.checked)"></th>
+      <th style="width:90px">Дата</th>
+      <th style="width:160px">Контрагент</th>
+      <th>Назначение</th>
+      <th class="r" style="width:110px">Приход, ₽</th>
+      <th class="r" style="width:110px">Расход, ₽</th>
+      <th style="width:95px">Тип</th>
+      <th style="width:78px">Статус</th>
+      <th style="width:40px"></th>
+    </tr></thead><tbody id="tb-bank"><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_e147lnl" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">04.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №1 от 04.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №1 от 04.03.2026 в соответствии с Договор…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">76&nbsp;240 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_3j0buvv"></td><td class="mono" style="font-size:11px;color:var(--muted)">04.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ООО "СЕВЕРАУРУС"</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Оплата Договору № 02.03.26-/1 от 02.03.2026. Лицензионное вознагрождение за право пользованием ПО &quot;Система Инвентаризации&quot; Без налога (НДС)">Оплата Договору № 02.03.26-/1 от 02.03.2026. Лицензионное вознагрождение…</td><td class="r mono" style="color:var(--green);font-weight:500">1&nbsp;000&nbsp;000 ₽</td><td class="r mono" style="color:var(--red)">—</td><td><span class="pill pp" style="font-size:9px">📥 Поступление</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td><button class="bi" title="Импортировать" onclick="openBimpOne('_3j0buvv')">📥</button></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_lstknae" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">05.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №2 от 05.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №2 от 05.03.2026 в соответствии с Договор…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">18&nbsp;240 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_on22fhs" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">05.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №3 от 05.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №3 от 05.03.2026 в соответствии с Договор…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">75&nbsp;510 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_dz10agl"></td><td class="mono" style="font-size:11px;color:var(--muted)">05.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">БОРДЮКОВ ГАВРИИЛ АНДРЕЕВИЧ</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Доход от предпринимательской деятельности.  НДС не облагается.">Доход от предпринимательской деятельности.  НДС не облагается.</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">500&nbsp;000 ₽</td><td><span class="pill pa" style="font-size:9px">💸 Вывод</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td><button class="bi" title="Импортировать" onclick="openBimpOne('_dz10agl')">📥</button></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_75p0r28"></td><td class="mono" style="font-size:11px;color:var(--muted)">06.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Комиссия за сервис Безопасный бизнес [Тариф Оптимальный] за период с 2026-03-06 по 2026-04-05, в т.ч. НДС. По договору № 8572925028562166784 от 2026-03-02.">Комиссия за сервис Безопасный бизнес [Тариф Оптимальный] за период с 202…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">1 ₽</td><td><span class="pill" style="font-size:9px;background:var(--hov);">🏦 Комиссия</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td><button class="bi" title="Импортировать" onclick="openBimpOne('_75p0r28')">📥</button></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_j4h6er7" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">06.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №4 от 06.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №4 от 06.03.2026 в соответствии с Договор…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">120&nbsp;880 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_41cjizd" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">13.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №5 от 13.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №5 от 13.03.2026 в соответствии с Договор…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">35&nbsp;240 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_d1y11oi"></td><td class="mono" style="font-size:11px;color:var(--muted)">13.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ООО "СЕВЕРАУРУС"</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Частичная Оплата Договору № 02.03.26-/1 от 02.03.2026 на доработку и использование лицензионного программного обеспечения. Авансовый платеж Без налога (НДС) НДС не облагается.">Частичная Оплата Договору № 02.03.26-/1 от 02.03.2026 на доработку и исп…</td><td class="r mono" style="color:var(--green);font-weight:500">500&nbsp;000 ₽</td><td class="r mono" style="color:var(--red)">—</td><td><span class="pill pp" style="font-size:9px">📥 Поступление</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td><button class="bi" title="Импортировать" onclick="openBimpOne('_d1y11oi')">📥</button></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_mpc6dyd" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">14.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №6 от 14.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №6 от 14.03.2026 в соответствии с Договор…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">49&nbsp;000 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_jddlhr7" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">14.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №7 от 14.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №7 от 14.03.2026 в соответствии с Договор…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">61&nbsp;360 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_n8x0y1n" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">15.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №9 от 15.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №9 от 15.03.2026 в соответствии с Договор…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">25&nbsp;000 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pg" style="font-size:9px">✓ учтено</span></td><td></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_noabaud" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">15.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №8 от 15.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №8 от 15.03.2026 в соответствии с Договор…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">368&nbsp;990 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_h2wfsew" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">17.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №10 от 17.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №10 от 17.03.2026 в соответствии с Догово…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">72&nbsp;520 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_pcxpyr2" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">17.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №11 от 17.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №11 от 17.03.2026 в соответствии с Догово…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">94&nbsp;280 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_kilc26x"></td><td class="mono" style="font-size:11px;color:var(--muted)">20.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ООО "СЕВЕРАУРУС"</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Оплата Договору № 02.03.26-/1 от 02.03.2026 на доработку и использование лицензионного программного обеспечения.  Сумма 500000-00 Без налога (НДС)">Оплата Договору № 02.03.26-/1 от 02.03.2026 на доработку и использование…</td><td class="r mono" style="color:var(--green);font-weight:500">500&nbsp;000 ₽</td><td class="r mono" style="color:var(--red)">—</td><td><span class="pill pp" style="font-size:9px">📥 Поступление</span></td><td><span class="pill pa" style="font-size:9px">⚠ нет</span></td><td><button class="bi" title="Импортировать" onclick="openBimpOne('_kilc26x')">📥</button></td></tr><tr class="hov"><td><input type="checkbox" class="bchk" data-id="_em6pi22" disabled="" style="opacity:.3"></td><td class="mono" style="font-size:11px;color:var(--muted)">23.03.2026</td><td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">ПАО Сбербанк</td><td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="Выплаты самозанятым по реестру №12 от 23.03.2026 в соответствии с Договором 93411644 от 04.03.2026">Выплаты самозанятым по реестру №12 от 23.03.2026 в соответствии с Догово…</td><td class="r mono" style="color:var(--green);font-weight:500">—</td><td class="r mono" style="color:var(--red)">244&nbsp;270 ₽</td><td><span class="pill ps" style="font-size:9px">🟣 Реестр</span></td><td><span class="pill pg" style="font-size:9px">✓ учтено</span></td><td></td></tr></tbody></table></div>
+    <div class="tf" id="tf-bank"><b>17</b> операций &nbsp;|&nbsp; Приход: <b class="mono" style="color:var(--green)">2&nbsp;000&nbsp;000</b> ₽ &nbsp; Расход: <b class="mono" style="color:var(--red)">1&nbsp;741&nbsp;531</b> ₽</div>
+  </div>
+  <div class="sec" id="sec-recon" style="display: block;">
+    <div class="sh"><h3>Сверка реестров</h3></div>
+    <div class="tw"><table><thead><tr>
+      <th>Реестр</th><th style="width:90px">Дата</th>
+      <th class="r" style="width:115px">Банк, ₽</th>
+      <th class="r" style="width:115px">Финансы, ₽</th>
+      <th class="r" style="width:100px">Разница</th>
+      <th style="width:80px">Статус</th>
+    </tr></thead><tbody id="tb-recon"><tr class="hov"><td><b>Реестр №1</b></td><td class="mono" style="font-size:11px;color:var(--muted)">04.03.2026</td><td class="r mono" style="font-weight:500">76&nbsp;240 ₽</td><td class="r mono" style="color:var(--muted)">76&nbsp;240 ₽</td><td class="r mono" style="color:var(--green);">— ₽</td><td><span class="pill pg" style="font-size:9px">✓</span></td></tr><tr class="hov"><td><b>Реестр №2</b></td><td class="mono" style="font-size:11px;color:var(--muted)">05.03.2026</td><td class="r mono" style="font-weight:500">18&nbsp;240 ₽</td><td class="r mono" style="color:var(--muted)">93&nbsp;750 ₽</td><td class="r mono" style="color:var(--amber);">-75&nbsp;510 ₽</td><td><span class="pill pn" style="font-size:9px">расх.</span></td></tr><tr class="hov"><td><b>Реестр №3</b></td><td class="mono" style="font-size:11px;color:var(--muted)">05.03.2026</td><td class="r mono" style="font-weight:500">75&nbsp;510 ₽</td><td class="r mono" style="color:var(--muted)">93&nbsp;750 ₽</td><td class="r mono" style="color:var(--amber);">-18&nbsp;240 ₽</td><td><span class="pill pn" style="font-size:9px">расх.</span></td></tr><tr class="hov"><td><b>Реестр №4</b></td><td class="mono" style="font-size:11px;color:var(--muted)">06.03.2026</td><td class="r mono" style="font-weight:500">120&nbsp;880 ₽</td><td class="r mono" style="color:var(--muted)">120&nbsp;880 ₽</td><td class="r mono" style="color:var(--green);">— ₽</td><td><span class="pill pg" style="font-size:9px">✓</span></td></tr><tr class="hov"><td><b>Реестр №5</b></td><td class="mono" style="font-size:11px;color:var(--muted)">13.03.2026</td><td class="r mono" style="font-weight:500">35&nbsp;240 ₽</td><td class="r mono" style="color:var(--muted)">35&nbsp;240 ₽</td><td class="r mono" style="color:var(--green);">— ₽</td><td><span class="pill pg" style="font-size:9px">✓</span></td></tr><tr class="hov"><td><b>Реестр №6</b></td><td class="mono" style="font-size:11px;color:var(--muted)">14.03.2026</td><td class="r mono" style="font-weight:500">49&nbsp;000 ₽</td><td class="r mono" style="color:var(--muted)">159&nbsp;360 ₽</td><td class="r mono" style="color:var(--amber);">-110&nbsp;360 ₽</td><td><span class="pill pn" style="font-size:9px">расх.</span></td></tr><tr class="hov"><td><b>Реестр №7</b></td><td class="mono" style="font-size:11px;color:var(--muted)">14.03.2026</td><td class="r mono" style="font-weight:500">61&nbsp;360 ₽</td><td class="r mono" style="color:var(--muted)">159&nbsp;360 ₽</td><td class="r mono" style="color:var(--amber);">-98&nbsp;000 ₽</td><td><span class="pill pn" style="font-size:9px">расх.</span></td></tr><tr class="hov"><td><b>Реестр №9</b></td><td class="mono" style="font-size:11px;color:var(--muted)">15.03.2026</td><td class="r mono" style="font-weight:500">25&nbsp;000 ₽</td><td class="r mono" style="color:var(--muted)">393&nbsp;990 ₽</td><td class="r mono" style="color:var(--amber);">-368&nbsp;990 ₽</td><td><span class="pill pn" style="font-size:9px">расх.</span></td></tr><tr class="hov"><td><b>Реестр №8</b></td><td class="mono" style="font-size:11px;color:var(--muted)">15.03.2026</td><td class="r mono" style="font-weight:500">368&nbsp;990 ₽</td><td class="r mono" style="color:var(--muted)">393&nbsp;990 ₽</td><td class="r mono" style="color:var(--amber);">-25&nbsp;000 ₽</td><td><span class="pill pn" style="font-size:9px">расх.</span></td></tr><tr class="hov"><td><b>Реестр №10</b></td><td class="mono" style="font-size:11px;color:var(--muted)">17.03.2026</td><td class="r mono" style="font-weight:500">72&nbsp;520 ₽</td><td class="r mono" style="color:var(--muted)">166&nbsp;800 ₽</td><td class="r mono" style="color:var(--amber);">-94&nbsp;280 ₽</td><td><span class="pill pn" style="font-size:9px">расх.</span></td></tr><tr class="hov"><td><b>Реестр №11</b></td><td class="mono" style="font-size:11px;color:var(--muted)">17.03.2026</td><td class="r mono" style="font-weight:500">94&nbsp;280 ₽</td><td class="r mono" style="color:var(--muted)">166&nbsp;800 ₽</td><td class="r mono" style="color:var(--amber);">-72&nbsp;520 ₽</td><td><span class="pill pn" style="font-size:9px">расх.</span></td></tr><tr class="hov"><td><b>Реестр №12</b></td><td class="mono" style="font-size:11px;color:var(--muted)">23.03.2026</td><td class="r mono" style="font-weight:500">244&nbsp;270 ₽</td><td class="r mono" style="color:var(--muted)">244&nbsp;270 ₽</td><td class="r mono" style="color:var(--green);">— ₽</td><td><span class="pill pg" style="font-size:9px">✓</span></td></tr></tbody></table></div>
+  </div>
+</div>
+
+</div></div>
+
+<!-- ══════════════ MODAL: ПРИХОД ══════════════ -->
+<div class="ovl" id="m-income"><div class="modal">
+  <div class="mh"><h3 id="mi-tit">Редактировать приход</h3><button class="bi del" onclick="closeModal('m-income')">✕</button></div>
+  <input type="hidden" id="mi-id" value="_ly4rvny">
+  <div class="m2">
+    <div><label class="lbl">Дата</label><input class="inp" type="date" id="mi-date"></div>
+    <div><label class="lbl">Тип</label><select class="inp" id="mi-type" onchange="updIP()" data-ddg-inputtype="identities.middleName"><option value="bank">🏦 Безнал</option><option value="cash">💵 Наличные</option></select></div>
+  </div>
+  <div style="margin-bottom:10px"><label class="lbl">Источник / контрагент</label><input class="inp" type="text" id="mi-src" list="dl-src" data-ddg-inputtype="identities.middleName"><datalist id="dl-src"><option value=" ООО “СЕВЕРАУРУС&quot;"></option></datalist></div>
+  <div style="margin-bottom:10px"><label class="lbl">Сумма, ₽</label><input class="inp r" type="number" id="mi-amt" placeholder="0" oninput="updIP()" data-ddg-inputtype="identities.middleName"></div>
+  <div class="ibox ibox-blue" id="mi-prev" style="display: block;"><div class="ibox-row"><span class="ik">Сумма поступления</span><span class="iv">1&nbsp;000&nbsp;000 ₽</span></div><div class="ibox-row"><span class="ik">УСН 6% (к уплате)</span><span class="iv" style="color:var(--red)">−60&nbsp;000 ₽</span></div><div class="ibox-row tot"><span class="ik">Нетто</span><span class="iv" style="color:var(--green)">940&nbsp;000 ₽</span></div></div>
+  <div style="margin-bottom:10px"><label class="lbl">Примечание</label><input class="inp" type="text" id="mi-note" data-ddg-inputtype="identities.middleName"></div>
+  <div class="mf"><button class="btn bg" onclick="closeModal('m-income')">Отмена</button><button class="btn bp" onclick="saveInc()">Сохранить</button></div>
+</div></div>
+
+<!-- ══════════════ MODAL: ПОЛЕВОЙ ══════════════ -->
+<div class="ovl" id="m-field"><div class="modal">
+  <div class="mh"><h3 id="mf-tit">Худоенков Алексей Андреевич</h3><button class="bi del" onclick="closeModal('m-field')">✕</button></div>
+  <input type="hidden" id="mf-id" value="_yv3y929">
+  <input type="hidden" id="mf-member-mode" value=""> <!-- "member" if opened as member -->
+  <div class="m2">
+    <div><label class="lbl">ФИО</label><input class="inp" type="text" id="mf-name" list="dl-names" data-ddg-inputtype="unknown"><datalist id="dl-names"><option value="Быков Михаил Юрьевич"></option><option value="Бурмистров Артём Витальевич"></option><option value="Ференец Василий Андреевич"></option><option value="Самарцев Евгений Викторович"></option><option value="Худоенков Алексей Андреевич"></option><option value="Александрова Татьяна"></option><option value="Гусева Елена"></option><option value="Садчикова Светлана Юрьевна"></option><option value="Кузнецов Михаил Денисович"></option><option value="Гусева Наталия Владимировна"></option><option value="Козловская Ирина"></option><option value="Асанова Элина Наримановна"></option><option value="Дергузов Дмитрий Александрович"></option><option value="Гайгер Анна Сергеевна"></option><option value="Лукин Максим Евгеньевич"></option><option value="Кашаров Филип"></option><option value="Аржаный Павел Георгиевич"></option><option value="Волов Денис Александрович"></option><option value="Маневич Григорий Михайлович"></option></datalist></div>
+    <div><label class="lbl">Email</label><input class="inp" type="text" id="mf-email" list="dl-emails" data-ddg-inputtype="identities.emailAddress"><datalist id="dl-emails"><option value="micknick@yandex.ru"></option><option value="artemdj@gmail.com"></option><option value="eight8vision@gmail.com"></option><option value="samartsevev@yandex.ru"></option><option value="djduhov@mail.ru"></option><option value="talexandrova8@gmail.com"></option><option value="lena_lopert@mail.ru"></option><option value="tysatt@mail.ru"></option><option value="kuzneczov.mixail.00@bk.ru"></option><option value="nataliya-guseva@yandex.ru"></option><option value="iriko1105@gmail.com"></option><option value="ranavaloona1@gmail.com"></option><option value="gans1971@mail.ru"></option><option value="annagaiger@icloud.com"></option><option value="maximlukim@gmail.com"></option><option value="philippkasharov@gmail.com"></option><option value="fikusone@gmail.com"></option><option value="ant80@bk.ru"></option><option value="gregman@yandex.ru"></option></datalist></div>
+  </div>
+
+  <!-- Позиции -->
+  <div class="sec-lbl">Позиции</div>
+  <table class="ptbl" id="pos-tbl"><thead><tr><th>Тариф</th><th class="r" style="width:80px">₽/поз</th><th class="r" style="width:90px">Кол-во</th><th class="r" style="width:80px">Сумма</th><th style="width:24px"></th></tr></thead><tbody id="pos-body"><tr><td><input class="ptbl input" value="30₽ (книги/аглаонемы/розетки)" placeholder="Сканирование, верификация…" oninput="_ER[0].label=this.value;updNPD();updAllocPreview();updPayTotal()" data-ddg-inputtype="unknown"></td><td><input class="ptbl input r" type="number" value="30" oninput="_ER[0].rate=+this.value;updNPD();updAllocPreview();updPayTotal()" data-ddg-inputtype="unknown"></td><td><input class="ptbl input r" type="number" value="949" oninput="_ER[0].count=+this.value;updNPD();updAllocPreview();updPayTotal()" data-ddg-inputtype="unknown"></td><td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent);padding-right:6px">28&nbsp;470</td><td><button class="bi del" onclick="delPos(0)">×</button></td></tr><tr><td><input class="ptbl input" value="40₽/поз" placeholder="Сканирование, верификация…" oninput="_ER[1].label=this.value;updNPD();updAllocPreview();updPayTotal()" data-ddg-inputtype="unknown"></td><td><input class="ptbl input r" type="number" value="40" oninput="_ER[1].rate=+this.value;updNPD();updAllocPreview();updPayTotal()" data-ddg-inputtype="unknown"></td><td><input class="ptbl input r" type="number" value="2252" oninput="_ER[1].count=+this.value;updNPD();updAllocPreview();updPayTotal()" data-ddg-inputtype="unknown"></td><td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent);padding-right:6px">90&nbsp;080</td><td><button class="bi del" onclick="delPos(1)">×</button></td></tr></tbody></table>
+  <button class="btn bg" style="font-size:11px;margin-bottom:10px" onclick="addPos()">+ Строка</button>
+
+  <!-- НПД блок -->
+  <div class="ibox ibox-green" id="npd-block" style="margin-bottom:10px"><div class="ibox-row"><span class="ik">Начислено (тарифы: 30/40/50 ₽)</span><span class="iv">118&nbsp;550 ₽</span></div><div class="ibox-row"><span class="ik">НПД 6% — платит самостоятельно</span><span class="iv" style="color:var(--amber)">7&nbsp;113 ₽</span></div><div class="ibox-row"><span class="ik">Перечислять полностью</span><span class="iv" style="color:var(--green)">118&nbsp;550 ₽</span></div></div>
+
+  <!-- Блок члена группы (если открыт как member) -->
+  <div id="member-alloc-block" style="display:none">
+    <div class="sec-lbl">Зачислено через группу</div>
+    <div id="member-alloc-content" class="ibox ibox-purple" style="margin-bottom:10px"></div>
+  </div>
+
+  <!-- Члены группы (если лидер) -->
+  <div id="members-block" style="display: block;">
+    <div class="sec-lbl">Состав группы</div>
+    <div id="members-list" style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:6px;background:var(--ibg);border:1px solid var(--border);border-radius:6px;padding:5px 9px;margin-bottom:4px;font-size:12px"><span style="flex:1;font-weight:500">Самарцев Евгений Викторович</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:10px">6&nbsp;786 поз · 282&nbsp;920 ₽</span><button class="bi del" onclick="remMember('_ybmt2w1')">×</button></div><div style="display:flex;align-items:center;gap:6px;background:var(--ibg);border:1px solid var(--border);border-radius:6px;padding:5px 9px;margin-bottom:4px;font-size:12px"><span style="flex:1;font-weight:500">Александрова Татьяна</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:10px">3&nbsp;981 поз · 150&nbsp;630 ₽</span><button class="bi del" onclick="remMember('_z5io382')">×</button></div></div>
+    <select class="inp" id="madd" onchange="addMember()" style="margin-bottom:10px" data-ddg-inputtype="unknown"><option value="">+ Добавить участника…</option><option value="_11oaunt">Быков Михаил Юрьевич</option><option value="_hmyfush">Бурмистров Артём Витальевич</option><option value="_g3j9wtd">Гусева Елена</option><option value="_bgruz9r">Садчикова Светлана Юрьевна</option><option value="_bqfm5k2">Кузнецов Михаил Денисович</option><option value="_j416avg">Гусева Наталия Владимировна</option><option value="_6nwttgk">Козловская Ирина</option><option value="_m4xe309">Гайгер Анна Сергеевна</option><option value="_0w7vzby">Лукин Максим Евгеньевич</option><option value="_guxrdco">Кашаров Филип</option><option value="_u64wrdo">Волов Денис Александрович</option></select>
+  </div>
+
+  <!-- Выплаты -->
+  <div id="pay-block">
+    <div class="sec-lbl" id="pay-block-lbl">Выплаты (на всю группу)</div>
+    <!-- allocation info (для лидеров: показывает как делится каждый платёж) -->
+    <div id="alloc-preview" style="display: block; margin-bottom: 8px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Распределение по платежам →</div>
+      <div id="alloc-rows"><div class="alloc-row"><span class="alloc-name" style="color:var(--text)">Худоенков Алексей Андреевич</span><span class="alloc-pct" style="font-size:10px;color:var(--muted);line-height:1.6">949 × 30₽<br>2&nbsp;252 × 40₽</span><span class="alloc-amt">118&nbsp;550 ₽</span></div><div class="alloc-row"><span class="alloc-name">↳ Самарцев Евгений Викторович</span><span class="alloc-pct" style="font-size:10px;color:var(--muted);line-height:1.6">967 × 30₽<br>3&nbsp;704 × 40₽<br>2&nbsp;115 × 50₽</span><span class="alloc-amt">282&nbsp;920 ₽</span></div><div class="alloc-row"><span class="alloc-name">↳ Александрова Татьяна</span><span class="alloc-pct" style="font-size:10px;color:var(--muted);line-height:1.6">861 × 30₽<br>3&nbsp;120 × 40₽</span><span class="alloc-amt">150&nbsp;630 ₽</span></div></div>
+    </div>
+    <div class="pay-hdr"><span>Дата</span><span>Тип</span><span>Сумма, ₽</span><span></span></div>
+    <div id="pt-list"><div class="pay-row"><input type="date" class="inp" value="2026-03-05" onchange="_EP[0].date=r2i(this.value);updPayTotal();updAllocPreview()"><select class="inp" onchange="_EP[0].type=this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><option value="cash">💵 Нал</option><option value="transfer">💳 Перевод</option><option value="self" selected="">🟣 Самозан.</option></select><input class="inp r" type="number" value="120880" placeholder="0" oninput="_EP[0].amount=+this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><button class="bi del" onclick="delPay(0)">×</button></div><div class="pay-row"><input type="date" class="inp" value="2026-03-16" onchange="_EP[1].date=r2i(this.value);updPayTotal();updAllocPreview()"><select class="inp" onchange="_EP[1].type=this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><option value="cash">💵 Нал</option><option value="transfer">💳 Перевод</option><option value="self" selected="">🟣 Самозан.</option></select><input class="inp r" type="number" value="72520" placeholder="0" oninput="_EP[1].amount=+this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><button class="bi del" onclick="delPay(1)">×</button></div><div class="pay-row"><input type="date" class="inp" value="2026-03-22" onchange="_EP[2].date=r2i(this.value);updPayTotal();updAllocPreview()"><select class="inp" onchange="_EP[2].type=this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><option value="cash">💵 Нал</option><option value="transfer">💳 Перевод</option><option value="self" selected="">🟣 Самозан.</option></select><input class="inp r" type="number" value="70280" placeholder="0" oninput="_EP[2].amount=+this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><button class="bi del" onclick="delPay(2)">×</button></div><div class="pay-row"><input type="date" class="inp" value="2026-03-16" onchange="_EP[3].date=r2i(this.value);updPayTotal();updAllocPreview()"><select class="inp" onchange="_EP[3].type=this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><option value="cash" selected="">💵 Нал</option><option value="transfer">💳 Перевод</option><option value="self">🟣 Самозан.</option></select><input class="inp r" type="number" value="25000" placeholder="0" oninput="_EP[3].amount=+this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><button class="bi del" onclick="delPay(3)">×</button></div><div class="pay-row"><input type="date" class="inp" value="2026-03-14" onchange="_EP[4].date=r2i(this.value);updPayTotal();updAllocPreview()"><select class="inp" onchange="_EP[4].type=this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><option value="cash">💵 Нал</option><option value="transfer">💳 Перевод</option><option value="self" selected="">🟣 Самозан.</option></select><input class="inp r" type="number" value="80600" placeholder="0" oninput="_EP[4].amount=+this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><button class="bi del" onclick="delPay(4)">×</button></div><div class="pay-row"><input type="date" class="inp" value="2026-04-22" onchange="_EP[5].date=r2i(this.value);updPayTotal();updAllocPreview()"><select class="inp" onchange="_EP[5].type=this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><option value="cash">💵 Нал</option><option value="transfer">💳 Перевод</option><option value="self" selected="">🟣 Самозан.</option></select><input class="inp r" type="number" value="148880" placeholder="0" oninput="_EP[5].amount=+this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><button class="bi del" onclick="delPay(5)">×</button></div><div class="pay-row"><input type="date" class="inp" value="2026-04-25" onchange="_EP[6].date=r2i(this.value);updPayTotal();updAllocPreview()"><select class="inp" onchange="_EP[6].type=this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><option value="cash">💵 Нал</option><option value="transfer">💳 Перевод</option><option value="self" selected="">🟣 Самозан.</option></select><input class="inp r" type="number" value="0" placeholder="0" oninput="_EP[6].amount=+this.value;updPayTotal();updAllocPreview()" data-ddg-inputtype="unknown"><button class="bi del" onclick="delPay(6)">×</button></div></div>
+    <button class="btn bg" style="font-size:11px;margin-bottom:6px" onclick="addPay()">+ Выплата</button>
+    <div class="ibox ibox-blue" id="pay-total"><div class="ibox-row"><span class="ik">💵 Нал</span><span class="iv" style="color:var(--green)">25&nbsp;000 ₽</span></div><div class="ibox-row"><span class="ik">🟣 Самозанятым</span><span class="iv" style="color:var(--purple)">527&nbsp;100 ₽</span></div><div class="ibox-row tot"><span class="ik">Итого выплачено</span><span class="iv">552&nbsp;100 ₽</span></div><div class="ibox-row"><span class="ik">Начислено (группа)</span><span class="iv">552&nbsp;100 ₽</span></div><div class="ibox-row"><span class="ik">Остаток</span><span class="iv" style="color:var(--green);">✓ погашено</span></div></div>
+  </div>
+
+  <div style="margin-bottom:10px;margin-top:4px"><label class="lbl">Примечание</label><input class="inp" type="text" id="mf-note" data-ddg-inputtype="unknown"></div>
+  <div class="mf"><button class="btn bg" onclick="closeModal('m-field')">Отмена</button><button class="btn bp" onclick="saveFld()">Сохранить</button></div>
+</div></div>
+
+<!-- ══════════════ MODAL: РАСХОД ══════════════ -->
+<div class="ovl" id="m-expense"><div class="modal">
+  <div class="mh"><h3 id="me-tit">Редактировать расход</h3><button class="bi del" onclick="closeModal('m-expense')">✕</button></div>
+  <input type="hidden" id="me-id" value="_1u9ygzu">
+  <div class="m2">
+    <div><label class="lbl">Дата</label><input class="inp" type="date" id="me-date"></div>
+    <div><label class="lbl">Тип</label><select class="inp" id="me-type" onchange="updExpUI()" data-ddg-inputtype="unknown"><option value="mat">📦 Расходники</option><option value="hour">⏱ Почасовой</option><option value="day">📅 Подённый</option><option value="fix">🔒 Фиксированный</option></select></div>
+  </div>
+  <div style="margin-bottom:10px"><label class="lbl">Описание</label><input class="inp" type="text" id="me-desc" list="dl-descs" data-ddg-inputtype="unknown"><datalist id="dl-descs"><option value="Маневич Г. верификация удаленно"></option><option value="Ярошенко А.В."></option><option value="Ирина верификация"></option><option value="Быков верификация"></option><option value="Самарцев верификация"></option><option value="Гайгер верификация"></option><option value="Асанова верификация"></option><option value="Бордюков"></option><option value="Гусева Наталья Верификация озеленения"></option><option value="Волов Д.А."></option></datalist></div>
+  <div class="m3">
+    <div><label class="lbl" id="me-ql">Кол-во</label><input class="inp r" type="number" id="me-qty" value="1" step="any" oninput="updExpP()" data-ddg-inputtype="unknown"></div>
+    <div><label class="lbl">Единица</label><select class="inp" id="me-unit" data-ddg-inputtype="identities.addressStreet2"><option>шт</option><option>час</option><option>день</option><option>услуга</option><option>упак</option></select></div>
+    <div><label class="lbl" id="me-pl">Сумма, ₽</label><input class="inp r" type="number" id="me-price" placeholder="0" oninput="updExpP()" data-ddg-inputtype="unknown"></div>
+  </div>
+  <div class="ibox ibox-blue" id="me-prev"><span style="color:var(--muted)">Итого: </span><b style="color:var(--red)">250&nbsp;000 ₽</b></div>
+  <div style="margin-bottom:10px"><label class="lbl">Примечание</label><input class="inp" type="text" id="me-note" data-ddg-inputtype="unknown"></div>
+  <div class="mf"><button class="btn bg" onclick="closeModal('m-expense')">Отмена</button><button class="btn bp" onclick="saveExp()">Сохранить</button></div>
+</div></div>
+
+<!-- ══════════════ MODAL: EXCEL EXPORT ══════════════ -->
+<div class="ovl" id="m-export"><div class="modal">
+  <div class="mh"><h3>Экспорт в Excel</h3><button class="bi del" onclick="closeModal('m-export')">✕</button></div>
+  <div style="margin-bottom:10px"><label class="lbl">Период</label><select class="inp" id="ex-per" onchange="updExUI()"><option value="all">Всё время</option><option value="today">Сегодня</option><option value="week">Неделя</option><option value="month">Месяц</option><option value="quarter">Квартал</option><option value="custom">Произвольный</option></select></div>
+  <div id="ex-cust" style="display:none" class="m2">
+    <div><label class="lbl">От</label><input class="inp" type="date" id="ex-from"></div>
+    <div><label class="lbl">До</label><input class="inp" type="date" id="ex-to"></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
+    <label style="display:flex;gap:7px;align-items:center;cursor:pointer;font-size:12px"><input type="checkbox" id="ex-i" checked=""> Приход</label>
+    <label style="display:flex;gap:7px;align-items:center;cursor:pointer;font-size:12px"><input type="checkbox" id="ex-f" checked=""> Полевые — сводно</label>
+    <label style="display:flex;gap:7px;align-items:center;cursor:pointer;font-size:12px"><input type="checkbox" id="ex-p" checked=""> Выплаты — детально</label>
+    <label style="display:flex;gap:7px;align-items:center;cursor:pointer;font-size:12px"><input type="checkbox" id="ex-e" checked=""> Расходы</label>
+    <label style="display:flex;gap:7px;align-items:center;cursor:pointer;font-size:12px"><input type="checkbox" id="ex-s" checked=""> Сводка</label>
+  </div>
+  <div class="mf"><button class="btn bg" onclick="closeModal('m-export')">Отмена</button><button class="btn bp" onclick="doExport()">⬇ Скачать .xlsx</button></div>
+</div></div>
+
+<script type="application/json" id="uuid-email-map">{"8850c2c6-3d53-4e26-a831-e8f0933e2e2d":"micknick@yandex.ru","a5880305-5ad9-4eaa-9ad3-9ca26dea0237":"lena_lopert@mail.ru","e79237d7-9448-4abc-ad32-b85847c445cb":"samartsevev@yandex.ru","4962e65b-62c1-4dd6-b3f3-6f0258694c34":"artemdj@gmail.com","381862ed-ef7a-4454-822b-b28c4e312483":"talexandrova8@gmail.com","1a44e1c2-dffd-4964-92f6-b286bd364fd3":"ranavaloona1@gmail.com","7e1bdaad-135a-45f1-9260-5a2287b83d0c":"gans1971@mail.ru","599bccfe-f627-4d27-b93d-017d7833f894":"kuzneczov.mixail.00@bk.ru","214785d2-d032-4fee-a2fe-d8d2ccf091c4":"iriko1105@gmail.com","3f457033-f06a-4829-98a3-772e4132490c":"nataliya-guseva@yandex.ru","ac909626-17f0-4275-8567-685ba439a0b0":"djduhov@mail.ru","40e991a0-1b82-44af-a50f-18389c0417a2":"annagaiger@icloud.com","28ee220d-6fa7-4fc7-aa44-f79025945739":"maximlukim@gmail.com","9eaba17b-5fe5-4a7d-bf97-383047b8071a":"eight8vision@gmail.com","338acc5c-8f1b-468c-8c12-72d294974d7b":"philippkasharov@gmail.com","444e85c2-b1fb-42e7-ac00-6880dcdaa169":"fikusone@gmail.com","0ecc70c6-7b13-4a59-81e7-1fab8e88a346":"ant80@bk.ru","e9871402-8656-4d8c-8a1c-5b15d0ec9571":"gregman@yandex.ru"}</script>
+<script type="application/json" id="saved-data">{"income":[{"id":"_5nstav9","date":"15.02.2026","type":"cash","source":" ООО “СЕВЕРАУРУС\"","amount":200000,"note":""},{"id":"_blo4eld","date":"15.03.2026","type":"bank","source":" ООО “СЕВЕРАУРУС\"","amount":320000,"note":"СЧЁТ №1 на оплату услуг: «Консультация и разработка технического задания для электронной системы инвентаризации»"},{"id":"_ly4rvny","date":"04.03.2026","type":"bank","source":" ООО “СЕВЕРАУРУС\"","amount":1000000,"note":"Счёт на оплату № 3 от 04.03.2026 оплата по ЛИЦЕНЗИОННОМУ ДОГОВОР № 02.03.26/2 на право использования программного обеспечения"},{"id":"_up4yijy","date":"11.02.2026","type":"cash","source":" ООО “СЕВЕРАУРУС\"","amount":60000,"note":"Оплата инфраструктуры"},{"id":"_xuf6al5","date":"13.03.2026","type":"cash","source":" ООО “СЕВЕРАУРУС\"","amount":200000,"note":""},{"id":"_kkwi8y6","date":"13.03.2026","type":"bank","source":" ООО “СЕВЕРАУРУС\"","amount":500000,"note":"Счёт на оплату № 2 от 04.03.2026 50%"},{"id":"_ct5tj9a","date":"29.04.2026","type":"bank","source":" ООО “СЕВЕРАУРУС\"","amount":1000000,"note":"Счёт № 4 от 28.03.2026, Оплата по Договору №0328 от 25.03.2026 за оказание услуг по проведению инвентаризации движимого имущества (г. Москва).. НДС не облагается."}],"field":[{"id":"_11oaunt","name":"Быков Михаил Юрьевич","email":"micknick@yandex.ru","positions":[{"id":"_fkokeei","rate":30,"count":1833,"label":"30₽ (книги/аглаонемы в составе)"},{"id":"_0xjjqyc","rate":40,"count":5208,"label":"40₽/поз"},{"id":"_8jlba6o","rate":50,"count":2169,"label":"50₽ (ВИП 29-33 + эт.28 каб.21-48)"}],"paysFor":[],"payments":[{"id":"_jo8hw7c","date":"05.03.2026","type":"self","amount":75510,"note":"Реестр №3"},{"id":"_1qk05xh","date":"15.03.2026","type":"self","amount":25000,"note":"Реестр №9"},{"id":"_4vzrvfm","date":"23.03.2026","type":"self","amount":44120,"note":"Реестр №12"},{"id":"_0o0jgri","date":"05.03.2026","type":"cash","amount":24250,"note":"Аванс нал (−3%)"},{"id":"_dpcpb9g","date":"05.03.2026","type":"transfer","amount":2460,"note":"Перевод сбер"},{"id":"_k3vjnab","date":"15.03.2026","type":"self","amount":88830,"note":"Реестр №8"},{"id":"_zcihc2o","date":"23.04.2026","type":"self","amount":111590,"note":""}],"date":"23.04.2026","note":""},{"id":"_hmyfush","name":"Бурмистров Артём Витальевич","email":"artemdj@gmail.com","positions":[{"id":"_8qhuzo3","rate":30,"count":900,"label":"30₽ (книги/аглаонемы/розетки)"},{"id":"_0z7tbcb","rate":40,"count":3847,"label":"40₽/поз"}],"paysFor":["_vlg1dsa","_q44oa2r"],"payments":[{"id":"_ju33ci3","date":"04.03.2026","type":"self","amount":76240,"note":"Реестр №1"},{"id":"_sc8ouyg","date":"05.03.2026","type":"self","amount":18240,"note":"Реестр №2 (за Ференца)"},{"id":"_hsbnwia","date":"15.03.2026","type":"self","amount":124720,"note":"Реестр №8 (частично, нужна расшифровка)"},{"id":"_5kpk417","date":"23.03.2026","type":"self","amount":40000,"note":"Реестр №12"}],"date":"15.03.2026","note":""},{"id":"_vlg1dsa","name":"Ференец Василий Андреевич","email":"eight8vision@gmail.com","positions":[{"id":"_fieeski","rate":40,"count":456,"label":"40₽/поз"}],"date":"","payments":[],"paysFor":[],"note":""},{"id":"_ybmt2w1","name":"Самарцев Евгений Викторович","email":"samartsevev@yandex.ru","positions":[{"id":"_9r37vwv","rate":30,"count":967,"label":"30₽ (книги/аглаонемы в составе)"},{"id":"_poqts5d","rate":40,"count":3704,"label":"40₽/поз"},{"id":"_3ocls0d","rate":50,"count":2115,"label":"50₽ (ВИП 29-33 + эт.28 каб.21-48)"}],"paysFor":[],"payments":[{"id":"_77hb6xe","date":"05.03.2026","type":"cash","amount":24250,"note":"Аванс нал (−3%)"}],"date":"","note":""},{"id":"_yv3y929","name":"Худоенков Алексей Андреевич","email":"djduhov@mail.ru","positions":[{"id":"_vsgao8e","rate":30,"count":949,"label":"30₽ (книги/аглаонемы/розетки)"},{"id":"_xf35qs7","rate":40,"count":2252,"label":"40₽/поз"}],"paysFor":["_ybmt2w1","_z5io382"],"payments":[{"id":"_sqitdx8","date":"06.03.2026","type":"self","amount":120880,"note":"Реестр №4"},{"id":"_cqn4kp7","date":"17.03.2026","type":"self","amount":72520,"note":"Реестр №10"},{"id":"_jco7wit","date":"23.03.2026","type":"self","amount":70280,"note":"Реестр №12"},{"id":"_bzecr0f","date":"17.03.2026","type":"cash","amount":25000,"note":"Нал"},{"id":"_7zuq1cv","date":"15.03.2026","type":"self","amount":80600,"note":"Реестр №8"},{"id":"_etds6p2","date":"23.04.2026","type":"self","amount":148880,"note":""},{"id":"_szf03pw","date":"26.04.2026","type":"self","amount":33940,"note":""}],"date":"26.04.2026","note":""},{"id":"_z5io382","name":"Александрова Татьяна","email":"talexandrova8@gmail.com","positions":[{"id":"_mgrvvbn","rate":30,"count":861,"label":"30₽ (книги/аглаонемы/розетки)"},{"id":"_xffjk50","rate":40,"count":3120,"label":"40₽/поз"}],"paysFor":[],"payments":[],"date":"","note":""},{"id":"_g3j9wtd","name":"Гусева Елена","email":"lena_lopert@mail.ru","positions":[{"id":"_gc3mdas","rate":30,"count":1473,"label":"30₽ (книги/аглаонемы/розетки)"},{"id":"_7i2n5qa","rate":40,"count":4475,"label":"40₽/поз"}],"paysFor":[],"payments":[{"id":"_jg046j8","date":"17.03.2026","type":"self","amount":94280,"note":"Реестр №11"},{"id":"_zfqnu6d","date":"05.03.2026","type":"transfer","amount":34280,"note":"Перевод (Садчикова)"},{"id":"_17je8gk","date":"05.03.2026","type":"transfer","amount":34280,"note":""},{"id":"_l1bypg2","date":"23.04.2026","type":"self","amount":35520,"note":""},{"id":"_it4nug5","date":"23.04.2026","type":"self","amount":24830,"note":""}],"date":"23.04.2026","note":""},{"id":"_bgruz9r","name":"Садчикова Светлана Юрьевна","email":"tysatt@mail.ru","positions":[{"id":"_plb1i5z","rate":40,"count":888,"label":"40₽/поз"}],"paysFor":[],"payments":[{"id":"_jgj9l7d","date":"23.03.2026","type":"self","amount":35520,"note":"Реестр №12"}],"date":"15.03.2026","note":""},{"id":"_bqfm5k2","name":"Кузнецов Михаил Денисович","email":"kuzneczov.mixail.00@bk.ru","positions":[{"id":"_82mw7ta","rate":40,"count":1682,"label":"40₽/поз"}],"date":"04.03.2026","payments":[{"id":"_s8on507","date":"14.03.2026","type":"self","amount":61360,"note":"Реестр №7"},{"id":"_pcqjgdu","date":"23.03.2026","type":"self","amount":4560,"note":"Реестр №12"}],"paysFor":[],"note":""},{"id":"_j416avg","name":"Гусева Наталия Владимировна","email":"nataliya-guseva@yandex.ru","positions":[{"id":"_5bk1s3q","rate":30,"count":350,"label":"30₽ (аглаонемы после 20.03)"},{"id":"_zd0lcpu","rate":40,"count":942,"label":"40₽/поз (аглаонемы до 20.03 + прочее)"},{"id":"_iiiit95","rate":50,"count":916,"label":"50₽ (озеленение кроме аглаонем)"}],"paysFor":[],"payments":[{"id":"_snirjnb","date":"05.03.2026","type":"cash","amount":35000,"note":"Нал"},{"id":"_gci1cou","date":"05.03.2026","type":"transfer","amount":1394,"note":"Перевод сбер"},{"id":"_6yhkjqk","date":"17.03.2026","type":"cash","amount":25000,"note":"Нал"},{"id":"_8brfrsd","date":"17.03.2026","type":"transfer","amount":25000,"note":"Перевод"}],"date":"17.03.2026","note":""},{"id":"_6nwttgk","name":"Козловская Ирина","email":"iriko1105@gmail.com","positions":[{"id":"_vtfuimq","rate":30,"count":1011,"label":"30₽ (книги/аглаонемы/розетки)"},{"id":"_4d3w6gi","rate":40,"count":2107,"label":"40₽/поз"}],"date":"25.03.2026","payments":[{"id":"_fkqr71j","date":"05.03.2026","type":"cash","amount":40000,"note":"Нал"},{"id":"_nga0rv4","date":"05.03.2026","type":"transfer","amount":1550,"note":"Перевод сбер"},{"id":"_zjyfa2u","date":"17.04.2026","type":"transfer","amount":80000,"note":"Перевод 17.04"},{"id":"_jyfwzxv","date":"18.04.2026","type":"self","amount":80000,"note":"Реестр №13"}],"paysFor":[],"note":""},{"id":"_vi187k1","name":"Асанова Элина Наримановна","email":"ranavaloona1@gmail.com","positions":[{"id":"_n5bq7h6","rate":30,"count":1199,"label":"30₽ (книги/аглаонемы в составе)"},{"id":"_455wmtm","rate":40,"count":3202,"label":"40₽/поз"},{"id":"_k37foop","rate":50,"count":36,"label":"50₽ (цветы кроме аглаонем)"}],"paysFor":[],"payments":[],"date":"","note":""},{"id":"_q44oa2r","name":"Дергузов Дмитрий Александрович","email":"gans1971@mail.ru","positions":[{"id":"_irxelu5","rate":30,"count":635,"label":"30₽ (книги/аглаонемы/розетки)"},{"id":"_d5cvdq3","rate":40,"count":1266,"label":"40₽/поз"}],"paysFor":[],"payments":[],"date":"","note":""},{"id":"_m4xe309","name":"Гайгер Анна Сергеевна","email":"annagaiger@icloud.com","positions":[{"id":"_98uy7la","rate":30,"count":873,"label":"30₽ (книги/аглаонемы в составе/розетки)"},{"id":"_lsohxfp","rate":40,"count":902,"label":"40₽/поз"},{"id":"_s25kr4e","rate":50,"count":114,"label":"50₽ (цветы кроме аглаонем)"}],"paysFor":["_vi187k1","_6mhhjjz"],"payments":[{"id":"_73gtwyi","date":"13.03.2026","type":"self","amount":35240,"note":"Реестр №5"},{"id":"_1xu5dki","date":"23.03.2026","type":"self","amount":49790,"note":"Реестр №12"},{"id":"_wldqwpe","date":"15.03.2026","type":"self","amount":74840,"note":"Реестр №8"},{"id":"_bxncp0n","date":"17.03.2026","type":"cash","amount":25000,"note":"Нал"},{"id":"_ffbbes3","date":"17.03.2026","type":"transfer","amount":6320,"note":"Перевод"},{"id":"_en4000p","date":"23.04.2026","type":"self","amount":65350,"note":""}],"date":"23.04.2026","note":""},{"id":"_0w7vzby","name":"Лукин Максим Евгеньевич","email":"maximlukim@gmail.com","positions":[{"id":"_0koukrg","rate":40,"count":763,"label":"40₽/поз"}],"paysFor":[],"payments":[{"id":"_nwxxtls","date":"14.03.2026","type":"self","amount":30520,"note":"Реестр №6"}],"date":"13.03.2026","note":""},{"id":"_guxrdco","name":"Кашаров Филип","email":"philippkasharov@gmail.com","positions":[{"id":"_23tat8m","rate":40,"count":240,"label":"40₽/поз"}],"paysFor":["_ymwvdhf"],"payments":[{"id":"_rqip7sa","date":"14.03.2026","type":"self","amount":18480,"note":"Реестр №6"}],"date":"13.03.2026","note":""},{"id":"_ymwvdhf","name":"Аржаный Павел Георгиевич","email":"fikusone@gmail.com","positions":[{"id":"_2uyn80a","rate":40,"count":222,"label":"40₽/поз"}],"date":"","payments":[],"paysFor":[],"note":""},{"id":"_u64wrdo","name":"Волов Денис Александрович","email":"ant80@bk.ru","positions":[{"id":"_kneefmi","rate":40,"count":182,"label":"40₽/поз"}],"paysFor":[],"payments":[{"id":"_2t8ddrw","date":"05.03.2026","type":"cash","amount":150000,"note":"Аванс нал"},{"id":"_ypcck9w","date":"05.03.2026","type":"transfer","amount":7240,"note":"Перевод"}],"date":"05.03.2026","note":""},{"id":"_6mhhjjz","name":"Маневич Григорий Михайлович","email":"gregman@yandex.ru","positions":[{"id":"_xc7kc42","rate":30,"count":476,"label":"30₽ (книги/аглаонемы/розетки)"},{"id":"_wm5poih","rate":40,"count":211,"label":"40₽/поз"}],"paysFor":[],"payments":[],"date":"","note":""}],"expenses":[{"id":"_322wg2z","date":"15.03.2026","type":"day","desc":"Маневич Г. верификация удаленно","qty":5,"unit":"день","price":5000,"note":"перевод через Гайгер"},{"id":"_ymaccxf","date":"14.03.2026","type":"fix","desc":"Ярошенко А.В.","qty":1,"unit":"услуга","price":320000,"note":""},{"id":"_ju7uu32","date":"15.03.2026","type":"fix","desc":"Ярошенко А.В.","qty":1,"unit":"услуга","price":100000,"note":""},{"id":"_gdeblen","date":"15.03.2026","type":"hour","desc":"Ирина верификация","qty":1,"unit":"час","price":5000,"note":""},{"id":"_qwq7me0","date":"15.03.2026","type":"hour","desc":"Быков верификация","qty":2,"unit":"час","price":1000,"note":""},{"id":"_idsuty9","date":"15.03.2026","type":"hour","desc":"Самарцев верификация","qty":1,"unit":"час","price":1000,"note":""},{"id":"_q4qtorm","date":"15.03.2026","type":"hour","desc":"Гайгер верификация","qty":1,"unit":"час","price":325,"note":""},{"id":"_hov0tj8","date":"16.03.2026","type":"hour","desc":"Асанова верификация","qty":1,"unit":"час","price":325,"note":""},{"id":"_w8a8pj3","date":"16.03.2026","type":"fix","desc":"Бордюков","qty":1,"unit":"услуга","price":200000,"note":"аванс"},{"id":"_wbxoevt","date":"16.03.2026","type":"fix","desc":"Бордюков","qty":1,"unit":"услуга","price":200000,"note":"аванс"},{"id":"_lhvvkth","date":"17.03.2026","type":"hour","desc":"Гусева Наталья Верификация озеленения","qty":10,"unit":"час","price":750,"note":""},{"id":"_f9ddclw","date":"07.03.2026","type":"fix","desc":"Волов Д.А.","qty":1,"unit":"услуга","price":150000,"note":""},{"id":"_1u9ygzu","date":"11.04.2026","type":"fix","desc":"Ярошенко А.В.","qty":1,"unit":"услуга","price":250000,"note":"оплата за модуль перемещения"}],"bank_ops":[{"id":"_e147lnl","date":"04.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":76240,"purpose":"Выплаты самозанятым по реестру №1 от 04.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":1,"matched_id":null,"imported":false},{"id":"_3j0buvv","date":"04.03.2026","counterparty":"ООО \"СЕВЕРАУРУС\"","in":1000000,"out":0,"purpose":"Оплата Договору № 02.03.26-/1 от 02.03.2026. Лицензионное вознагрождение за право пользованием ПО \"Система Инвентаризации\" Без налога (НДС)","cat":"income","reestr":null,"matched_id":"_ly4rvny","imported":false},{"id":"_lstknae","date":"05.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":18240,"purpose":"Выплаты самозанятым по реестру №2 от 05.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":2,"matched_id":null,"imported":false},{"id":"_on22fhs","date":"05.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":75510,"purpose":"Выплаты самозанятым по реестру №3 от 05.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":3,"matched_id":null,"imported":false},{"id":"_dz10agl","date":"05.03.2026","counterparty":"БОРДЮКОВ ГАВРИИЛ АНДРЕЕВИЧ","in":0,"out":500000,"purpose":"Доход от предпринимательской деятельности.  НДС не облагается.","cat":"withdraw","reestr":null,"matched_id":null,"imported":false},{"id":"_75p0r28","date":"06.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":1,"purpose":"Комиссия за сервис Безопасный бизнес [Тариф Оптимальный] за период с 2026-03-06 по 2026-04-05, в т.ч. НДС. По договору № 8572925028562166784 от 2026-03-02.","cat":"bank_fee","reestr":null,"matched_id":null,"imported":false},{"id":"_j4h6er7","date":"06.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":120880,"purpose":"Выплаты самозанятым по реестру №4 от 06.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":4,"matched_id":null,"imported":false},{"id":"_41cjizd","date":"13.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":35240,"purpose":"Выплаты самозанятым по реестру №5 от 13.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":5,"matched_id":null,"imported":false},{"id":"_d1y11oi","date":"13.03.2026","counterparty":"ООО \"СЕВЕРАУРУС\"","in":500000,"out":0,"purpose":"Частичная Оплата Договору № 02.03.26-/1 от 02.03.2026 на доработку и использование лицензионного программного обеспечения. Авансовый платеж Без налога (НДС) НДС не облагается.","cat":"income","reestr":null,"matched_id":"_kkwi8y6","imported":false},{"id":"_mpc6dyd","date":"14.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":49000,"purpose":"Выплаты самозанятым по реестру №6 от 14.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":6,"matched_id":null,"imported":false},{"id":"_jddlhr7","date":"14.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":61360,"purpose":"Выплаты самозанятым по реестру №7 от 14.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":7,"matched_id":null,"imported":false},{"id":"_n8x0y1n","date":"15.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":25000,"purpose":"Выплаты самозанятым по реестру №9 от 15.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":9,"matched_id":null,"imported":true},{"id":"_noabaud","date":"15.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":368990,"purpose":"Выплаты самозанятым по реестру №8 от 15.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":8,"matched_id":null,"imported":false},{"id":"_h2wfsew","date":"17.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":72520,"purpose":"Выплаты самозанятым по реестру №10 от 17.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":10,"matched_id":null,"imported":false},{"id":"_pcxpyr2","date":"17.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":94280,"purpose":"Выплаты самозанятым по реестру №11 от 17.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":11,"matched_id":null,"imported":false},{"id":"_kilc26x","date":"20.03.2026","counterparty":"ООО \"СЕВЕРАУРУС\"","in":500000,"out":0,"purpose":"Оплата Договору № 02.03.26-/1 от 02.03.2026 на доработку и использование лицензионного программного обеспечения.  Сумма 500000-00 Без налога (НДС)","cat":"income","reestr":null,"matched_id":"_kkwi8y6","imported":false},{"id":"_em6pi22","date":"23.03.2026","counterparty":"ПАО Сбербанк","in":0,"out":244270,"purpose":"Выплаты самозанятым по реестру №12 от 23.03.2026 в соответствии с Договором 93411644 от 04.03.2026","cat":"payroll","reestr":12,"imported":true}]}</script>
+
+<script>
+
+'use strict';
+var income=[],field=[],expenses=[],bank_ops=[];
+// Editor state
+var _ER=[],_EM=[],_EP=[];
+var _expandedRows={};
+
+// ─── utils ───
+function uid(){return '_'+Math.random().toString(36).slice(2,9);}
+function fmt(n){return Math.round(n||0).toLocaleString('ru-RU');}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;');}
+function iso(d){return d.toISOString().slice(0,10);}
+function today(){return iso(new Date());}
+function todayRu(){var d=new Date();return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear();}
+function pad(n){return n<10?'0'+n:''+n;}
+function pdate(s){if(!s)return null;var m=(s||'').match(/^(\d{2})\.(\d{2})\.(\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);var t=new Date(s);return isNaN(t)?null:t;}
+function r2i(s){if(!s)return'';var p=s.split('-');return p.length===3?p[2]+'.'+p[1]+'.'+p[0]:s;}
+function i2r(s){var d=pdate(s);return d?iso(d):'';}
+function inP(ds,f,t){if(!f&&!t)return true;var d=pdate(ds);if(!d)return false;var di=iso(d);return(!f||di>=f)&&(!t||di<=t);}
+
+// ─── field helpers ───
+function wPos(w){return(w.positions||[]).reduce(function(s,p){return s+(+p.count||0);},0);}
+function wAct(w){return(w.positions||[]).reduce(function(s,p){return s+(+p.count||0)*(+p.rate||0);},0);}
+function wPays(w){return Array.isArray(w.payments)?w.payments:[];}
+function wPaid(w,type){return wPays(w).filter(function(p){return!type||p.type===type;}).reduce(function(s,p){return s+(+p.amount||0);},0);}
+function getLeader(w){return field.find(function(x){return(x.paysFor||[]).indexOf(w.id)>=0;});}
+function isMember(w){return!!getLeader(w);}
+// Group helpers (for leader w)
+function gAct(w){
+  var a=wAct(w);
+  (w.paysFor||[]).forEach(function(id){var m=field.find(function(x){return x.id===id;});if(m)a+=wAct(m);});
+  return a;
+}
+function gPos(w){
+  var p=wPos(w);
+  (w.paysFor||[]).forEach(function(id){var m=field.find(function(x){return x.id===id;});if(m)p+=wPos(m);});
+  return p;
+}
+// Member's allocated share from leader's payments (proportional by accrual)
+function memberAlloc(member,leader){
+  if(!leader)return 0;
+  var ga=gAct(leader);
+  if(ga<=0)return 0;
+  var leaderPaid=wPaid(leader); // total paid by leader to group
+  return leaderPaid*(wAct(member)/ga);
+}
+// Member's allocated share from ONE specific payment
+function memberAllocFromOne(member,payment,leader){
+  var ga=gAct(leader);
+  if(ga<=0)return 0;
+  return(+payment.amount||0)*(wAct(member)/ga);
+}
+// Effective paid for any worker (own + allocated if member)
+function effPaid(w){
+  var own=wPaid(w);
+  var leader=getLeader(w);
+  if(!leader)return own;
+  return own+memberAlloc(w,leader);
+}
+// Effective debt
+function effDebt(w){return wAct(w)-effPaid(w);}
+// Status string
+function wStatus(w){
+  var act=wAct(w);var ep=effPaid(w);
+  if(act===0)return'none';
+  if(ep>=act)return'ok';
+  if(ep>0)return'part';
+  return'debt';
+}
+// Group total paid (leader's own payments + all members' own payments)
+function gPaid(leader){
+  var t=wPaid(leader);
+  (leader.paysFor||[]).forEach(function(id){var m=field.find(function(x){return x.id===id;});if(m)t+=wPaid(m);});
+  return t;
+}
+
+// ─── theme ───
+function toggleTheme(){var h=document.documentElement;var n=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',n);localStorage.setItem('tgt',n);}
+(function(){var t=localStorage.getItem('tgt');if(t)document.documentElement.setAttribute('data-theme',t);})();
+
+// ─── tabs ───
+function switchTab(t,btn){
+  document.querySelectorAll('.tab').forEach(function(e){e.classList.remove('act');});
+  document.querySelectorAll('.page').forEach(function(e){e.classList.remove('act');});
+  btn.classList.add('act');document.getElementById('page-'+t).classList.add('act');
+  if(t==='dash')updateDash();
+  if(t==='bank'){renderBank();}
+}
+
+// ─── period ───
+var _period={type:'all',from:null,to:null};
+function setPeriod(type,btn){
+  if(btn){document.querySelectorAll('.act-p').forEach(function(b){b.classList.remove('act-p');});btn&&btn.classList.add('act-p');}
+  var now=new Date(),f=null,t=null;
+  if(type==='today'){f=t=iso(now);}
+  else if(type==='week'){var d=new Date(now);d.setDate(d.getDate()-d.getDay()+1);f=iso(d);t=iso(now);}
+  else if(type==='month'){f=iso(new Date(now.getFullYear(),now.getMonth(),1));t=iso(now);}
+  else if(type==='quarter'){var q=Math.floor(now.getMonth()/3);f=iso(new Date(now.getFullYear(),q*3,1));t=iso(now);}
+  else if(type==='custom'){f=document.getElementById('pd-from').value||null;t=document.getElementById('pd-to').value||null;}
+  if(f)document.getElementById('pd-from').value=f;
+  if(t)document.getElementById('pd-to').value=t;
+  _period={type:type,from:f,to:t};updateDash();
+}
+
+// ─── datalists ───
+function uniq(arr){return arr.filter(function(v,i,a){return v&&a.indexOf(v)===i;});}
+function setDL(id,arr){document.getElementById(id).innerHTML=uniq(arr).map(function(s){return'<option value="'+esc(s)+'">';}).join('');}
+function refreshDL(){
+  setDL('dl-src',income.map(function(r){return r.source;}));
+  setDL('dl-names',field.map(function(w){return w.name;}));
+  setDL('dl-emails',field.map(function(w){return w.email;}));
+  setDL('dl-descs',expenses.map(function(r){return r.desc;}));
+}
+
+// ─── INCOME ───
+function openIncModal(id){
+  refreshDL();
+  var r=id?income.find(function(x){return x.id===id;}):null;
+  document.getElementById('mi-tit').textContent=r?'Редактировать приход':'Добавить приход';
+  document.getElementById('mi-id').value=r?r.id:'';
+  document.getElementById('mi-date').value=r?(i2r(r.date)||today()):today();
+  document.getElementById('mi-type').value=r?r.type:'bank';
+  document.getElementById('mi-src').value=r?r.source:'';
+  document.getElementById('mi-amt').value=r?r.amount:'';
+  document.getElementById('mi-note').value=r?r.note:'';
+  updIP();openModal('m-income');
+}
+function updIP(){
+  var t=document.getElementById('mi-type').value;
+  var a=+document.getElementById('mi-amt').value||0;
+  var b=document.getElementById('mi-prev');
+  if(a>0){
+    b.style.display='block';
+    var u=t==='bank'?Math.round(a*0.06):0;
+    b.innerHTML='<div class="ibox-row"><span class="ik">Сумма поступления</span><span class="iv">'+fmt(a)+' ₽</span></div>'+
+      (u?'<div class="ibox-row"><span class="ik">УСН 6% (к уплате)</span><span class="iv" style="color:var(--red)">−'+fmt(u)+' ₽</span></div>':'')+
+      '<div class="ibox-row tot"><span class="ik">Нетто</span><span class="iv" style="color:var(--green)">'+fmt(a-u)+' ₽</span></div>';
+  }else{b.style.display='none';}
+}
+function saveInc(){
+  var id=document.getElementById('mi-id').value;
+  var obj={id:id||uid(),date:r2i(document.getElementById('mi-date').value),type:document.getElementById('mi-type').value,source:document.getElementById('mi-src').value,amount:+document.getElementById('mi-amt').value||0,note:document.getElementById('mi-note').value};
+  if(id){var i=income.findIndex(function(x){return x.id===id;});if(i>=0)income[i]=obj;}else income.push(obj);
+  closeModal('m-income');renderIncome();updateDash();autoSave();
+}
+function delInc(id){if(!confirm('Удалить запись?'))return;income=income.filter(function(x){return x.id!==id;});renderIncome();updateDash();autoSave();}
+function renderIncome(){
+  refreshDL();
+  var ft=document.getElementById('inc-ft').value;
+  var q=(document.getElementById('inc-q').value||'').toLowerCase();
+  var rows=income.filter(function(r){return(!ft||r.type===ft)&&(!q||(r.source||'').toLowerCase().indexOf(q)>=0||(r.note||'').toLowerCase().indexOf(q)>=0);});
+  document.getElementById('tb-income').innerHTML=rows.map(function(r){
+    var u=r.type==='bank'?Math.round(r.amount*0.06):0;
+    return'<tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">'+r.date+'</td><td><b>'+esc(r.source)+'</b></td><td>'+(r.type==='cash'?'<span class="pill pg">💵 Нал</span>':'<span class="pill pp">🏦 Безнал</span>')+'</td><td class="r mono">'+fmt(r.amount)+'</td><td class="r mono" style="color:var(--red)">'+(u?'−'+fmt(u):'—')+'</td><td class="r mono" style="color:var(--green)">'+fmt(r.amount-u)+'</td><td style="font-size:11px;color:var(--muted)">'+esc(r.note)+'</td><td style="text-align:right"><button class="bi" onclick="openIncModal(\''+r.id+'\')">✏️</button><button class="bi del" onclick="delInc(\''+r.id+'\')">×</button></td></tr>';
+  }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Нет записей</td></tr>';
+  var c=rows.filter(function(r){return r.type==='cash';}).reduce(function(s,r){return s+r.amount;},0);
+  var b=rows.filter(function(r){return r.type==='bank';}).reduce(function(s,r){return s+r.amount;},0);
+  var u=Math.round(b*0.06);
+  document.getElementById('tf-income').innerHTML='<b>'+rows.length+'</b> записей &nbsp;|&nbsp; Нал: <b class="mono">'+fmt(c)+'</b> ₽ &nbsp; Безнал: <b class="mono">'+fmt(b)+'</b> ₽ &nbsp; УСН: <b class="mono" style="color:var(--red)">−'+fmt(u)+'</b> ₽ &nbsp; Нетто: <b class="mono" style="color:var(--green)">'+fmt(c+b-u)+'</b> ₽';
+  updateDash();
+}
+
+// ─── FIELD MODAL ───
+var PT_TYPES={cash:'💵 Нал',transfer:'💳 Перевод',self:'🟣 Самозан.'};
+
+function openFldModal(id, asMember){
+  refreshDL();
+  var w=id?field.find(function(x){return x.id===id;}):null;
+  var leader=w?getLeader(w):null;
+  document.getElementById('mf-tit').textContent=w?(w.name):'Новый сотрудник';
+  document.getElementById('mf-id').value=w?w.id:'';
+  document.getElementById('mf-member-mode').value=asMember?'1':'';
+  document.getElementById('mf-name').value=w?w.name:'';
+  document.getElementById('mf-email').value=w?w.email:'';
+  document.getElementById('mf-note').value=w?w.note:'';
+  _ER=w?JSON.parse(JSON.stringify(w.positions||[])):[{id:uid(),rate:40,count:0,label:'40₽/поз'}];
+  _EM=w?[].concat(w.paysFor||[]):[];
+  _EP=w?JSON.parse(JSON.stringify(wPays(w))):[];
+  drawPos();
+  // Show/hide members block (only for group leaders that are NOT members themselves)
+  var mbBlock=document.getElementById('members-block');
+  var mbList=document.getElementById('members-list');
+  // A worker is a leader if they have paysFor, OR we're editing standalone (not a member)
+  if(!leader||asMember===false){
+    mbBlock.style.display='block';
+    drawMembersList(w?w.id:null);
+  } else {
+    mbBlock.style.display='none';
+  }
+  // Show member alloc block only when opened as member
+  var allocBlock=document.getElementById('member-alloc-block');
+  var allocContent=document.getElementById('member-alloc-content');
+  if(leader&&asMember!==false){
+    allocBlock.style.display='block';
+    drawMemberAllocBlock(w,leader);
+    // When member, hide payment block (member's payments are usually 0 or direct)
+    document.getElementById('pay-block-lbl').textContent='Прямые выплаты (вне группы)';
+  } else {
+    allocBlock.style.display='none';
+    document.getElementById('pay-block-lbl').textContent=_EM.length?'Выплаты (на всю группу)':'История выплат';
+  }
+  drawPays();updNPD(w);updAllocPreview();
+  openModal('m-field');
+}
+
+// Member alloc block: shows how much this member gets from leader's payments
+function drawMemberAllocBlock(member,leader){
+  var ga=gAct(leader);
+  var memberAct=wAct(member);
+  var pct=ga>0?(memberAct/ga*100).toFixed(1):'0';
+  var html='<div style="margin-bottom:5px">Входит в группу <b>'+esc(leader.name)+'</b></div>';
+  html+='<div class="ibox-row"><span class="ik">Начислено за позиции</span><span class="iv">'+fmt(memberAct)+' ₽</span></div>';
+  html+='<div class="ibox-row"><span class="ik">Доля в группе ('+fmt(gAct(leader))+' ₽)</span><span class="iv">'+pct+'%</span></div>';
+  var gTotAct=gAct(leader);
+  var gTotPaid=gPaid(leader);
+  var gDebtTotal=gTotAct-gTotPaid;
+  html+='<div class="ibox-row" style="margin-top:6px"><span class="ik">Группа начислено</span><span class="iv">'+fmt(gTotAct)+' ₽</span></div>';
+  html+='<div class="ibox-row"><span class="ik">Группа выплачено</span><span class="iv">'+fmt(gTotPaid)+' ₽</span></div>';
+  html+='<div class="ibox-row tot"><span class="ik">Группа: остаток</span><span class="iv" style="color:'+(gDebtTotal>0?'var(--red)':gDebtTotal<0?'var(--amber)':'var(--green)')+';">'+fmt(gDebtTotal)+' ₽</span></div>';
+  var ownDirect=wPaid(member);
+  if(ownDirect){
+    html+='<div class="ibox-row" style="margin-top:4px"><span class="ik">+ Прямые выплаты</span><span class="iv">'+fmt(ownDirect)+' ₽</span></div>';
+  }
+  var ep=effPaid(member);var debt=memberAct-ep;
+  html+='<div class="ibox-row tot" style="margin-top:6px"><span class="ik">Остаток по сотруднику</span><span class="iv" style="color:'+(debt>0?'var(--red)':debt<0?'var(--amber)':'var(--green)')+';">'+(debt>0?fmt(debt)+' ₽':debt<0?'перепл. '+fmt(-debt)+' ₽':'✓ погашено')+'</span></div>';
+  document.getElementById('member-alloc-content').innerHTML=html;
+}
+
+// alloc preview for leader (how each payment splits across members)
+function updAllocPreview(){
+  var ap=document.getElementById('alloc-preview');
+  var ar=document.getElementById('alloc-rows');
+  if(!_EM.length){ap.style.display='none';return;}
+  var pseudoGA=_ER.reduce(function(s,p){return s+(+p.count||0)*(+p.rate||0);},0);
+  _EM.forEach(function(id){var m=field.find(function(x){return x.id===id;});if(m)pseudoGA+=wAct(m);});
+  if(!_EP.length){ap.style.display='none';return;}
+  ap.style.display='block';
+
+  function rbd(positions){
+    var parts=(positions||[]).filter(function(p){return(+p.count||0)>0;}).map(function(p){return fmt(p.count)+' × '+fmt(p.rate)+'₽';});
+    return parts.length?parts.join('<br>'):'—';
+  }
+
+  var leaderAct=_ER.reduce(function(s,p){return s+(+p.count||0)*(+p.rate||0);},0);
+  var leaderPos=_ER.reduce(function(s,p){return s+(+p.count||0);},0);
+  var arHtml='<div class="alloc-row"><span class="alloc-name" style="color:var(--text)">'+(document.getElementById('mf-name').value||'')+'</span>';
+  arHtml+='<span class="alloc-pct" style="font-size:10px;color:var(--muted);line-height:1.6">'+rbd(_ER)+'</span>';
+  arHtml+='<span class="alloc-amt">'+fmt(leaderAct)+' ₽</span></div>';
+
+  _EM.forEach(function(id){
+    var m=field.find(function(x){return x.id===id;});if(!m)return;
+    var mA=wAct(m);
+    arHtml+='<div class="alloc-row"><span class="alloc-name">↳ '+esc(m.name)+'</span>';
+    arHtml+='<span class="alloc-pct" style="font-size:10px;color:var(--muted);line-height:1.6">'+rbd(m.positions)+'</span>';
+    arHtml+='<span class="alloc-amt">'+fmt(mA)+' ₽</span></div>';
+  });
+  ar.innerHTML=arHtml;
+  document.getElementById('pay-block-lbl').textContent='Выплаты (на всю группу)';
+}
+
+// НПД callout
+function updNPD(w){
+  var act=_ER.reduce(function(s,p){return s+(+p.count||0)*(+p.rate||0);},0);
+  var npd=Math.round(act*0.06);
+  var txt='<div class="ibox-row"><span class="ik">Начислено (тарифы: 30/40/50 ₽)</span><span class="iv">'+fmt(act)+' ₽</span></div>';
+  txt+='<div class="ibox-row"><span class="ik">НПД 6% — платит самостоятельно</span><span class="iv" style="color:var(--amber)">'+fmt(npd)+' ₽</span></div>';
+  txt+='<div class="ibox-row"><span class="ik">Перечислять полностью</span><span class="iv" style="color:var(--green)">'+fmt(act)+' ₽</span></div>';
+  document.getElementById('npd-block').innerHTML=txt;
+}
+
+// --- Позиции ---
+function drawPos(){
+  document.getElementById('pos-body').innerHTML=_ER.map(function(p,i){
+    return'<tr><td><input class="ptbl input" value="'+esc(p.label||'')+'" placeholder="Сканирование, верификация…" oninput="_ER['+i+'].label=this.value;updNPD();updAllocPreview();updPayTotal()"></td>'+
+    '<td><input class="ptbl input r" type="number" value="'+p.rate+'" oninput="_ER['+i+'].rate=+this.value;updNPD();updAllocPreview();updPayTotal()"></td>'+
+    '<td><input class="ptbl input r" type="number" value="'+p.count+'" oninput="_ER['+i+'].count=+this.value;updNPD();updAllocPreview();updPayTotal()"></td>'+
+    '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--accent);padding-right:6px">'+fmt((p.count||0)*(p.rate||0))+'</td>'+
+    '<td><button class="bi del" onclick="delPos('+i+')" '+(i===0&&_ER.length===1?'disabled':'')+'>×</button></td></tr>';
+  }).join('');
+  updNPD();updAllocPreview();
+}
+function addPos(){_ER.push({id:uid(),rate:40,count:0,label:'40₽/поз'});drawPos();}
+function delPos(i){if(_ER.length>1){_ER.splice(i,1);drawPos();}}
+
+// --- Участники группы ---
+function drawMembersList(editId){
+  var list=document.getElementById('members-list');
+  var sel=document.getElementById('madd');
+  list.innerHTML=!_EM.length?'<div style="font-size:11px;color:var(--muted);margin-bottom:5px">Нет участников — нажмите «Добавить участника»</div>':
+    _EM.map(function(id){
+      var m=field.find(function(x){return x.id===id;});if(!m)return'';
+      return'<div style="display:flex;align-items:center;gap:6px;background:var(--ibg);border:1px solid var(--border);border-radius:6px;padding:5px 9px;margin-bottom:4px;font-size:12px">'+
+        '<span style="flex:1;font-weight:500">'+esc(m.name)+'</span>'+
+        '<span style="font-family:\'IBM Plex Mono\',monospace;color:var(--muted);font-size:10px">'+fmt(wPos(m))+' поз · '+fmt(wAct(m))+' ₽</span>'+
+        '<button class="bi del" onclick="remMember(\''+id+'\')">×</button></div>';
+    }).join('');
+  // populate selector: all workers that are not already in a group and not the current leader
+  var cands=field.filter(function(x){return x.id!==editId&&_EM.indexOf(x.id)<0&&!isMember(x);});
+  sel.innerHTML='<option value="">+ Добавить участника…</option>'+cands.map(function(x){return'<option value="'+x.id+'">'+esc(x.name)+'</option>';}).join('');
+  updAllocPreview();
+}
+function addMember(){
+  var sel=document.getElementById('madd');var id=sel.value;if(!id)return;
+  _EM.push(id);drawMembersList(document.getElementById('mf-id').value);sel.value='';updPayTotal();
+}
+function remMember(id){_EM=_EM.filter(function(x){return x!==id;});drawMembersList(document.getElementById('mf-id').value);updPayTotal();}
+
+// --- Выплаты ---
+function drawPays(){
+  var el=document.getElementById('pt-list');
+  if(!_EP.length){el.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Нет записей</div>';updPayTotal();return;}
+  el.innerHTML=_EP.map(function(p,i){
+    var topts=Object.keys(PT_TYPES).map(function(k){return'<option value="'+k+'"'+(p.type===k?' selected':'')+'>'+PT_TYPES[k]+'</option>';}).join('');
+    return'<div class="pay-row">'+
+      '<input type="date" class="inp" value="'+(p.date?i2r(p.date)||today():today())+'" onchange="_EP['+i+'].date=r2i(this.value);updPayTotal();updAllocPreview()">'+
+      '<select class="inp" onchange="_EP['+i+'].type=this.value;updPayTotal();updAllocPreview()">'+topts+'</select>'+
+      '<input class="inp r" type="number" value="'+p.amount+'" placeholder="0" oninput="_EP['+i+'].amount=+this.value;updPayTotal();updAllocPreview()">'+
+      '<button class="bi del" onclick="delPay('+i+')">×</button></div>';
+  }).join('');
+  updPayTotal();updAllocPreview();
+}
+function addPay(){_EP.push({id:uid(),date:todayRu(),type:'self',amount:0,note:''});drawPays();}
+function delPay(i){_EP.splice(i,1);drawPays();}
+function updPayTotal(){
+  var c=_EP.filter(function(p){return p.type==='cash';}).reduce(function(s,p){return s+(+p.amount||0);},0);
+  var t=_EP.filter(function(p){return p.type==='transfer';}).reduce(function(s,p){return s+(+p.amount||0);},0);
+  var s=_EP.filter(function(p){return p.type==='self';}).reduce(function(s,p){return s+(+p.amount||0);},0);
+  var tot=c+t+s;
+  // accrual for this worker only (not group)
+  var act=_ER.reduce(function(a,p){return a+(+p.count||0)*(+p.rate||0);},0);
+  // group accrual if leader
+  var gact=act;_EM.forEach(function(id){var m=field.find(function(x){return x.id===id;});if(m)gact+=wAct(m);});
+  var debt=gact-tot;
+  var html='';
+  if(c)html+='<div class="ibox-row"><span class="ik">💵 Нал</span><span class="iv" style="color:var(--green)">'+fmt(c)+' ₽</span></div>';
+  if(t)html+='<div class="ibox-row"><span class="ik">💳 Перевод</span><span class="iv" style="color:var(--teal)">'+fmt(t)+' ₽</span></div>';
+  if(s)html+='<div class="ibox-row"><span class="ik">🟣 Самозанятым</span><span class="iv" style="color:var(--purple)">'+fmt(s)+' ₽</span></div>';
+  html+='<div class="ibox-row tot"><span class="ik">Итого выплачено</span><span class="iv">'+fmt(tot)+' ₽</span></div>';
+  html+='<div class="ibox-row"><span class="ik">Начислено'+(gact>act?' (группа)':'')+'</span><span class="iv">'+fmt(gact)+' ₽</span></div>';
+  html+='<div class="ibox-row"><span class="ik">Остаток</span><span class="iv" style="color:'+(debt>0?'var(--red)':debt<0?'var(--amber)':'var(--green)')+';">'+(debt>0?fmt(debt)+' ₽':debt<0?'перепл. '+fmt(-debt)+' ₽':'✓ погашено')+'</span></div>';
+  document.getElementById('pay-total').innerHTML=html;
+}
+
+function saveFld(){
+  var id=document.getElementById('mf-id').value;
+  var lastDate=_EP.length?_EP[_EP.length-1].date:'';
+  var obj={id:id||uid(),name:document.getElementById('mf-name').value,email:document.getElementById('mf-email').value,positions:JSON.parse(JSON.stringify(_ER)),paysFor:[].concat(_EM),payments:JSON.parse(JSON.stringify(_EP)),date:lastDate,note:document.getElementById('mf-note').value};
+  if(id){var i=field.findIndex(function(x){return x.id===id;});if(i>=0)field[i]=obj;}else field.push(obj);
+  closeModal('m-field');renderField();updateDash();autoSave();
+}
+function delFld(id){
+  if(!confirm('Удалить сотрудника?'))return;
+  field=field.filter(function(x){return x.id!==id;});
+  field.forEach(function(w){w.paysFor=(w.paysFor||[]).filter(function(x){return x!==id;});});
+  renderField();updateDash();autoSave();
+}
+
+// ─── RENDER FIELD ───
+function renderField(){
+  refreshDL();
+  var ft=document.getElementById('fld-ft').value;
+  var q=(document.getElementById('fld-q').value||'').toLowerCase();
+  // only non-members, sorted alpha
+  var workers=field.filter(function(w){return!isMember(w);}).slice().sort(function(a,b){return a.name.localeCompare(b.name,'ru');});
+  var tb=document.getElementById('tb-field');
+  var rows=[];
+  var totPos=0,totAct=0,totC=0,totT=0,totS=0,totPaid=0,idx=1;
+
+  workers.forEach(function(w){
+    var isGroup=(w.paysFor||[]).length>0;
+    var dPos=isGroup?gPos(w):wPos(w);
+    var dAct=isGroup?gAct(w):wAct(w);
+    var dPaid=isGroup?gPaid(w):wPaid(w);
+    var dDebt=dAct-dPaid;
+    var dC=wPaid(w,'cash'),dT=wPaid(w,'transfer'),dS=wPaid(w,'self');
+    var st=dAct===0?'none':dPaid>=dAct?'ok':dPaid>0?'part':'debt';
+    if(ft&&ft!==st)return;
+    if(q&&w.name.toLowerCase().indexOf(q)<0&&(w.email||'').toLowerCase().indexOf(q)<0)return;
+    totPos+=dPos;totAct+=dAct;totC+=dC;totT+=dT;totS+=dS;totPaid+=dPaid;
+
+    var exp=_expandedRows[w.id];
+    var expBtn=isGroup?'<button class="exp-btn" data-eid="'+w.id+'" onclick="toggleExpand(this.dataset.eid)" title="'+(exp?'Свернуть':'Развернуть')+'">'+(exp?'▼ ':'▶ ')+'</button>':'';
+    var groupBadge=isGroup?'<span class="member-tag">группа · '+(w.paysFor||[]).length+' чел.</span>':'';
+
+    rows.push('<tr class="hov">'+
+      '<td>'+expBtn+'</td>'+
+      '<td><b>'+esc(w.name)+'</b>'+groupBadge+'</td>'+
+      '<td style="font-size:11px;color:var(--muted)">'+esc(w.email||'')+'</td>'+
+      '<td class="r mono">'+fmt(dPos)+'</td>'+
+      '<td class="r mono" style="font-weight:500">'+(dAct?fmt(dAct)+' ₽':'—')+'</td>'+
+      '<td class="r">'+(dC?'<span class="pill pg">'+fmt(dC)+'</span>':'—')+'</td>'+
+      '<td class="r">'+(dT?'<span class="pill pt">'+fmt(dT)+'</span>':'—')+'</td>'+
+      '<td class="r">'+(dS?'<span class="pill ps">'+fmt(dS)+'</span>':'—')+'</td>'+
+      '<td class="r mono" style="color:'+(dDebt>0?'var(--red)':dDebt<0?'var(--amber)':'var(--muted)')+';">'+(dDebt>0?fmt(dDebt)+' ₽':dDebt<0?'перепл.':'—')+'</td>'+
+      '<td>'+stBadge(st)+'</td>'+
+      '<td style="text-align:right"><button class="bi" onclick="openFldModal(\''+w.id+'\',false)">✏️</button>'+(!isGroup?'<button class="bi del" onclick="delFld(\''+w.id+'\')">×</button>':'')+'</td></tr>');
+
+    // Expanded member rows
+    if(isGroup&&exp){
+      var gR=wPaid(w); var gO=gAct(w); var gRem=gO-gR;
+      var dh='<tr class="sub"><td></td><td colspan="10" style="padding:6px 10px 8px 22px">';
+      dh+='<div style="background:rgba(79,125,255,.07);border:1px solid rgba(79,125,255,.2);border-radius:7px;padding:10px 14px">';
+      dh+='<div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:8px">'+esc(w.name.split(' ')[0])+' — кому передать:</div>';
+      dh+='<table style="width:100%;border-collapse:collapse">';
+      dh+='<tr style="font-size:9px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px">';
+      dh+='<td style="padding-bottom:5px">Сотрудник</td>';
+      dh+='<td style="text-align:right;padding-bottom:5px;padding-right:8px">Тариф / позиций</td>';
+      dh+='<td style="text-align:right;padding-bottom:5px;padding-right:8px">Итого поз.</td>';
+      dh+='<td style="text-align:right;padding-bottom:5px;padding-right:8px">Начислено</td>';
+      dh+='<td style="text-align:right;padding-bottom:5px;font-weight:700;color:var(--text)">К передаче</td></tr>';
+
+      function rateBreakdown(ww){
+        var parts=[];
+        (ww.positions||[]).forEach(function(p){
+          if(p.count>0) parts.push(fmt(p.rate)+'₽×'+fmt(p.count));
+        });
+        return parts.length?parts.join(' + '):('40₽×'+fmt(wPos(ww)));
+      }
+
+      // Leader self
+      var rPos=wPos(w); var rAct=wAct(w);
+      dh+='<tr style="border-top:1px solid var(--border)">';
+      dh+='<td style="padding:4px 8px 4px 0;font-weight:600">'+esc(w.name)+'</td>';
+      dh+='<td style="text-align:right;padding:4px 8px;color:var(--muted);font-size:10px;font-family:monospace">'+rateBreakdown(w)+'</td>';
+      dh+='<td style="text-align:right;padding:4px 8px;font-family:monospace;font-weight:600">'+fmt(rPos)+'</td>';
+      dh+='<td style="text-align:right;padding:4px 8px;font-family:monospace">'+fmt(rAct)+' ₽</td>';
+      dh+='<td style="text-align:right;padding:4px 0;font-family:monospace;font-weight:700">'+fmt(rAct)+' ₽</td></tr>';
+
+      // Each member
+      (w.paysFor||[]).forEach(function(mid2){
+        var mb=field.find(function(x){return x.id===mid2;}); if(!mb)return;
+        var mbPos=wPos(mb); var mbAct=wAct(mb);
+        var mbOwed=mbAct-wPaid(mb);
+        dh+='<tr style="border-top:1px solid var(--border)">';
+        dh+='<td style="padding:4px 8px 4px 0;color:var(--muted)">'+esc(mb.name)+'</td>';
+        dh+='<td style="text-align:right;padding:4px 8px;color:var(--muted);font-size:10px;font-family:monospace">'+rateBreakdown(mb)+'</td>';
+        dh+='<td style="text-align:right;padding:4px 8px;font-family:monospace">'+fmt(mbPos)+'</td>';
+        dh+='<td style="text-align:right;padding:4px 8px;font-family:monospace">'+fmt(mbAct)+' ₽</td>';
+        dh+='<td style="text-align:right;padding:4px 0;font-family:monospace;font-weight:700;color:'+(mbOwed>0?'var(--purple)':'var(--green)')+';">'+(mbOwed>0?fmt(mbOwed)+' ₽':'✓')+'</td></tr>';
+      });
+
+      // Totals
+      dh+='<tr style="border-top:2px solid var(--border)">';
+      dh+='<td style="padding:5px 8px 2px 0;font-weight:700">Итого</td>';
+      dh+='<td></td>';
+      dh+='<td style="text-align:right;padding:5px 8px 2px;font-family:monospace;font-weight:700">'+fmt(gPos(w))+'</td>';
+      dh+='<td style="text-align:right;padding:5px 8px 2px;font-family:monospace;font-weight:700">'+fmt(gO)+' ₽</td>';
+      dh+='<td style="text-align:right;padding:5px 0 2px;font-family:monospace;font-weight:700;color:var(--accent)">'+fmt(gO)+' ₽</td></tr>';
+      dh+='</table>';
+      dh+='<div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border);font-size:10px;color:var(--muted)">';
+      dh+='Получено от Гавриила: <b style="color:var(--green)">'+fmt(gR)+' ₽</b>';
+      if(gRem>0) dh+='  &nbsp;|&nbsp;  Ещё ожидается: <b style="color:var(--amber)">'+fmt(gRem)+' ₽</b>';
+      else if(gRem===0) dh+='  &nbsp;|&nbsp; <b style="color:var(--green)">✓ Получено полностью</b>';
+      else dh+='  &nbsp;|&nbsp; Получено авансом: <b>'+fmt(-gRem)+' ₽</b>';
+      dh+='</div></div></td></tr>';
+      rows.push(dh);
+
+      // Member sub-rows
+      (w.paysFor||[]).forEach(function(mid){
+        var m=field.find(function(x){return x.id===mid;}); if(!m)return;
+        var mPos=wPos(m); var mAct=wAct(m);
+        var rbd=(m.positions||[]).filter(function(p){return p.count>0;}).map(function(p){return fmt(p.rate)+'₽×'+fmt(p.count);}).join(' + ')||'40₽×'+fmt(mPos);
+        rows.push('<tr class="sub">'+
+          '<td></td>'+
+          '<td style="padding-left:22px"><span style="color:var(--muted);margin-right:5px">↳</span>'+esc(m.name)+
+            '<button class="bi" style="font-size:11px;margin-left:5px" data-mid="'+m.id+'" onclick="openFldModal(this.dataset.mid,true)" title="Карточка">✏️</button></td>'+
+          '<td style="font-size:11px;color:var(--muted)">'+esc(m.email||'')+'</td>'+
+          '<td class="r mono">'+fmt(mPos)+'</td>'+
+          '<td class="r mono" style="font-weight:600">'+fmt(mAct)+' ₽</td>'+
+          '<td colspan="2" style="text-align:left;padding-left:6px;font-size:10px;color:var(--muted);font-family:monospace">'+rbd+'</td>'+
+          '<td style="text-align:center;font-size:11px;color:var(--muted)">через '+esc(w.name.split(' ')[0])+'</td>'+
+          '<td class="r mono" style="color:var(--purple);font-weight:600">'+fmt(mAct)+' ₽</td>'+
+          '<td></td></tr>');
+      });
+    }
+
+
+    if(wPos(w)>0)idx++;
+  });
+
+  tb.innerHTML=rows.join('')||'<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">Нет сотрудников</td></tr>';
+  document.getElementById('tf-field').innerHTML=
+    '<b>'+workers.length+'</b> чел. &nbsp; Поз.: <b class="mono">'+fmt(totPos)+'</b> &nbsp; Нач.: <b class="mono">'+fmt(totAct)+'</b> ₽ &nbsp; Нал: <b class="mono" style="color:var(--green)">'+fmt(totC)+'</b> &nbsp; Перевод: <b class="mono" style="color:var(--teal)">'+fmt(totT)+'</b> &nbsp; Самозан.: <b class="mono" style="color:var(--purple)">'+fmt(totS)+'</b> &nbsp; Долг: <b class="mono" style="color:var(--red)">'+fmt(Math.max(0,totAct-totPaid))+'</b> ₽';
+  var note=document.getElementById('fld-note');
+  note.textContent='(участники скрыты — раскрыть ▶)';
+  var _sb=document.getElementById('sync-badge');
+  if(_sb){var _tp=field.reduce(function(s,w){return s+wPos(w);},0);var _ta=field.reduce(function(s,w){return s+wAct(w);},0);_sb.textContent='📊\u00a0'+fmt(_tp)+'\u00a0поз\u00a0·\u00a0'+fmt(_ta)+'\u00a0₽';}
+}
+
+function toggleExpand(id){
+  _expandedRows[id]=!_expandedRows[id];
+  renderField();
+}
+
+function stBadge(st){
+  if(st==='ok')return'<span class="pill pg">✓ ok</span>';
+  if(st==='part')return'<span class="pill pa">частично</span>';
+  if(st==='debt')return'<span class="pill pn">долг</span>';
+  return'<span class="pill" style="background:var(--hov);color:var(--muted)">—</span>';
+}
+
+// ─── EXPENSES ───
+var EXP_TYPES={mat:'📦 Расходники',hour:'⏱ Почасовой',day:'📅 Подённый',fix:'🔒 Фиксир.'};
+function openExpModal(id){
+  refreshDL();
+  var r=id?expenses.find(function(x){return x.id===id;}):null;
+  document.getElementById('me-tit').textContent=r?'Редактировать расход':'Добавить расход';
+  document.getElementById('me-id').value=r?r.id:'';
+  document.getElementById('me-date').value=r?(i2r(r.date)||today()):today();
+  document.getElementById('me-type').value=r?r.type:'mat';
+  document.getElementById('me-desc').value=r?r.desc:'';
+  document.getElementById('me-qty').value=r?r.qty:1;
+  document.getElementById('me-unit').value=r?r.unit:'шт';
+  document.getElementById('me-price').value=r?r.price:'';
+  document.getElementById('me-note').value=r?r.note:'';
+  updExpUI();updExpP();openModal('m-expense');
+}
+function updExpUI(){
+  var t=document.getElementById('me-type').value;
+  var u=document.getElementById('me-unit');
+  if(t==='hour'){document.getElementById('me-ql').textContent='Часов';document.getElementById('me-pl').textContent='Ставка/час, ₽';u.value='час';}
+  else if(t==='day'){document.getElementById('me-ql').textContent='Дней';document.getElementById('me-pl').textContent='Ставка/день, ₽';u.value='день';}
+  else if(t==='fix'){document.getElementById('me-ql').textContent='Кол-во';document.getElementById('me-pl').textContent='Сумма, ₽';u.value='услуга';}
+  else{document.getElementById('me-ql').textContent='Количество';document.getElementById('me-pl').textContent='Цена за ед., ₽';u.value='шт';}
+  updExpP();
+}
+function updExpP(){
+  var q=+document.getElementById('me-qty').value||0,p=+document.getElementById('me-price').value||0;
+  document.getElementById('me-prev').innerHTML='<span style="color:var(--muted)">Итого: </span><b style="color:var(--red)">'+fmt(q*p)+' ₽</b>';
+}
+function saveExp(){
+  var id=document.getElementById('me-id').value;
+  var obj={id:id||uid(),date:r2i(document.getElementById('me-date').value),type:document.getElementById('me-type').value,desc:document.getElementById('me-desc').value,qty:+document.getElementById('me-qty').value||1,unit:document.getElementById('me-unit').value,price:+document.getElementById('me-price').value||0,note:document.getElementById('me-note').value};
+  if(id){var i=expenses.findIndex(function(x){return x.id===id;});if(i>=0)expenses[i]=obj;}else expenses.push(obj);
+  closeModal('m-expense');renderExpenses();updateDash();autoSave();
+}
+function delExp(id){if(!confirm('Удалить?'))return;expenses=expenses.filter(function(x){return x.id!==id;});renderExpenses();updateDash();autoSave();}
+function renderExpenses(){
+  refreshDL();
+  var ft=document.getElementById('exp-ft').value,q=(document.getElementById('exp-q').value||'').toLowerCase();
+  var rows=expenses.filter(function(r){return(!ft||r.type===ft)&&(!q||(r.desc||'').toLowerCase().indexOf(q)>=0||(r.note||'').toLowerCase().indexOf(q)>=0);});
+  document.getElementById('tb-expense').innerHTML=rows.map(function(r){
+    return'<tr class="hov"><td class="mono" style="font-size:11px;color:var(--muted)">'+r.date+'</td><td>'+(EXP_TYPES[r.type]||r.type)+'</td><td><b>'+esc(r.desc||'')+'</b></td><td class="r mono">'+fmt(r.qty)+'</td><td style="color:var(--muted);font-size:11px">'+r.unit+'</td><td class="r mono">'+fmt(r.price)+'</td><td class="r mono" style="font-weight:600;color:var(--red)">'+fmt(r.qty*r.price)+' ₽</td><td style="font-size:11px;color:var(--muted)">'+esc(r.note||'')+'</td><td style="text-align:right"><button class="bi" onclick="openExpModal(\''+r.id+'\')">✏️</button><button class="bi del" onclick="delExp(\''+r.id+'\')">×</button></td></tr>';
+  }).join('')||'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">Нет расходов</td></tr>';
+  var tot=rows.reduce(function(s,r){return s+r.qty*r.price;},0);
+  document.getElementById('tf-expense').innerHTML='<b>'+rows.length+'</b> записей &nbsp; Итого: <b class="mono" style="color:var(--red)">'+fmt(tot)+' ₽</b>';
+}
+
+// ─── DASHBOARD ───
+function updateDash(){
+  var f=_period.from,t=_period.to;
+  var iF=income.filter(function(r){return inP(r.date,f,t);});
+  var iC=iF.filter(function(r){return r.type==='cash';}).reduce(function(s,r){return s+r.amount;},0);
+  var iB=iF.filter(function(r){return r.type==='bank';}).reduce(function(s,r){return s+r.amount;},0);
+  var usn=Math.round(iB*0.06),iNet=iC+iB-usn;
+  var fAct=field.reduce(function(s,w){return s+wAct(w);},0);
+  var fC=field.reduce(function(s,w){return s+wPaid(w,'cash');},0);
+  var fT=field.reduce(function(s,w){return s+wPaid(w,'transfer');},0);
+  var fS=field.reduce(function(s,w){return s+wPaid(w,'self');},0);
+  var fPaid=fC+fT+fS;var fDebt=Math.max(0,fAct-fPaid);
+  var eF=expenses.filter(function(r){return inP(r.date,f,t);});
+  var eM=eF.filter(function(r){return r.type==='mat';}).reduce(function(s,r){return s+r.qty*r.price;},0);
+  var eH=eF.filter(function(r){return r.type==='hour';}).reduce(function(s,r){return s+r.qty*r.price;},0);
+  var eD=eF.filter(function(r){return r.type==='day';}).reduce(function(s,r){return s+r.qty*r.price;},0);
+  var eX=eF.filter(function(r){return r.type==='fix';}).reduce(function(s,r){return s+r.qty*r.price;},0);
+  var eT=eM+eH+eD+eX;
+  var bal=iNet-fPaid-eT,rBal=bal-fDebt;
+  document.getElementById('krow').innerHTML=
+    kpi('kg','Приход нетто',fmt(iNet)+' ₽','нал '+fmt(iC)+' + б/нал '+fmt(iB))+
+    kpi('kb','УСН 6%',fmt(usn)+' ₽','от безнала '+fmt(iB)+' ₽')+
+    kpi('kr','Выплачено полевым',fmt(fPaid)+' ₽','начислено '+fmt(fAct)+' ₽')+
+    kpi('ka','Долг полевым',fmt(fDebt)+' ₽',field.filter(function(w){return effDebt(w)>0&&wPos(w)>0;}).length+' чел.')+
+    kpi('kr','Расходы',fmt(eT)+' ₽','за период')+
+    kpi(bal>=0?'kc':'kr',bal>=0?'На руках':'Перерасход',fmt(bal)+' ₽','реально: '+fmt(rBal)+' ₽');
+  function ss(id,v,c){var e=document.getElementById(id);if(e){e.textContent=v;if(c)e.style.color=c;}}
+  ss('s-ic',fmt(iC)+' ₽');ss('s-ib',fmt(iB)+' ₽');ss('s-usn','−'+fmt(usn)+' ₽');ss('s-in',fmt(iNet)+' ₽');
+  ss('s-fa',fmt(fAct)+' ₽');ss('s-fc',fmt(fC)+' ₽');ss('s-ft',fmt(fT)+' ₽');ss('s-fs',fmt(fS)+' ₽');ss('s-fd',fmt(fDebt)+' ₽');
+  ss('s-em',fmt(eM)+' ₽');ss('s-eh',fmt(eH)+' ₽');ss('s-ed',fmt(eD)+' ₽');ss('s-ef',fmt(eX)+' ₽');ss('s-et',fmt(eT)+' ₽');
+  ss('s-bi',fmt(iNet)+' ₽');ss('s-bf','−'+fmt(fPaid)+' ₽');ss('s-be','−'+fmt(eT)+' ₽');ss('s-bu','−'+fmt(usn)+' ₽');
+  var be=document.getElementById('s-bal');if(be){be.textContent=fmt(bal)+' ₽';be.style.color=bal>=0?'var(--green)':'var(--red)';}
+  ss('s-bdf',fmt(fDebt)+' ₽');
+  var br=document.getElementById('s-br');if(br){br.textContent=fmt(rBal)+' ₽';br.style.color=rBal>=0?'var(--green)':'var(--red)';}
+}
+function kpi(cls,label,val,sub){return'<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div><div class="kpi-v">'+val+'</div><div class="kpi-s">'+sub+'</div></div>';}
+
+
+// ─── SYNC INVENTORY POSITIONS ───
+// ─── СТАВКИ И ИСКЛЮЧЕНИЯ ───
+var EXCLUDE_EMAILS=['tgi-admin@botsmith.ru','test_worker@botsmith.ru','vasya@klass.ru','sergo@ya.ru','2959796@gmail.com'];
+var VIP_FLOORS=[28,29,30,31,32,33];
+var VIP_EMAILS=['micknick@yandex.ru','samartsevev@yandex.ru'];
+var GREENERY_EMAIL='nataliya-guseva@yandex.ru';
+
+function normFloor(s){var m=String(s||'').match(/-?\d+/);return m?parseInt(m[0]):null;}
+function getRate(email,floor,category,subtype){
+  if(subtype==='аглаонема')return 30;
+  if(email===GREENERY_EMAIL&&category==='Озеленение')return 50;
+  if(VIP_EMAILS.indexOf(email)>=0&&VIP_FLOORS.indexOf(floor)>=0)return 50;
+  return 40;
+}
+
+// ─── SYNC INVENTORY POSITIONS ───
+// Принимает CSV из get_scan_summary(): email, floor, category, subtype, count
+function syncInventory(){
+  var inp=document.createElement('input');inp.type='file';inp.accept='.xlsx,.xls,.csv';
+  inp.onchange=function(e){
+    var file=e.target.files[0];if(!file)return;
+    file.arrayBuffer().then(function(ab){
+      try{
+        var wb=XLSX.read(ab,{type:'array'});
+        var ws=wb.Sheets[wb.SheetNames[0]];
+        var rows=XLSX.utils.sheet_to_json(ws,{defval:null});
+        if(!rows.length){alert('Файл пустой');return;}
+
+        var keys=Object.keys(rows[0]||{});
+        var emailCol=keys.find(function(k){return/^email$/i.test(k);})||keys.find(function(k){return/scanned_by/i.test(k);});
+        var catCol=keys.find(function(k){return/катег|category/i.test(k);})||'category';
+        var floorCol=keys.find(function(k){return/этаж|floor/i.test(k);})||'floor';
+        var cntCol=keys.find(function(k){return/^count$|кол|qty/i.test(k);})||'count';
+        var subCol=keys.find(function(k){return/subtype|подтип/i.test(k);})||null;
+
+        if(!emailCol){alert('Нет колонки email.\nКолонки: '+keys.join(', '));return;}
+
+        var emailData={};
+        rows.forEach(function(r){
+          var email=String(r[emailCol]||'').trim().toLowerCase();
+          if(!email||EXCLUDE_EMAILS.indexOf(email)>=0)return;
+          var cat=String(r[catCol]||'');
+          var floor=normFloor(r[floorCol]);
+          var cnt=parseInt(r[cntCol])||1;
+          var sub=subCol?String(r[subCol]||'').trim():'прочее';
+          var rate=getRate(email,floor,cat,sub);
+          if(!emailData[email])emailData[email]={count:0,accrual:0,r30:0,r40:0,r50:0};
+          emailData[email].count+=cnt;
+          emailData[email].accrual+=cnt*rate;
+          if(rate===30)emailData[email].r30+=cnt;
+          else if(rate===50)emailData[email].r50+=cnt;
+          else emailData[email].r40+=cnt;
+        });
+
+        var changes=[],noMatch=[];
+        Object.keys(emailData).forEach(function(email){
+          var d=emailData[email];
+          var w=field.find(function(x){return(x.email||'').toLowerCase()===email;});
+          if(!w){noMatch.push(email+' ('+d.count+')');return;}
+          changes.push({w:w,d:d});
+        });
+
+        if(!changes.length){alert('Никого не сопоставлено.\nEmail в файле:\n'+Object.keys(emailData).join('\n'));return;}
+
+        var msg='Синхронизация позиций\n\n';
+        changes.forEach(function(c){
+          var oldAct=wAct(c.w);
+          var rates=[];
+          if(c.d.r30)rates.push(c.d.r30+'×30₽');
+          if(c.d.r40)rates.push(c.d.r40+'×40₽');
+          if(c.d.r50)rates.push(c.d.r50+'×50₽');
+          msg+=c.w.name+': '+fmt(c.d.count)+' поз → '+fmt(c.d.accrual)+'₽';
+          if(rates.length>1)msg+=' ('+rates.join(' + ')+')';
+          var diff=c.d.accrual-oldAct;
+          if(diff!==0)msg+=' ['+(diff>0?'+':'')+fmt(diff)+'₽]';
+          msg+='\n';
+        });
+        if(noMatch.length)msg+='\nНет в полевых: '+noMatch.slice(0,4).join(', ')+(noMatch.length>4?' +ещё '+(noMatch.length-4):'');
+        msg+='\n\nОбновить позиции?';
+        if(!confirm(msg))return;
+
+        changes.forEach(function(c){
+          var w=c.w,d=c.d;
+          w.positions=[];
+          if(d.r30>0)w.positions.push({id:uid(),rate:30,count:d.r30,label:'30₽ (аглаонемы)'});
+          if(d.r40>0)w.positions.push({id:uid(),rate:40,count:d.r40,label:'40₽/поз'});
+          if(d.r50>0)w.positions.push({id:uid(),rate:50,count:d.r50,label:'50₽ (ВИП/озел.)'});
+        });
+
+        renderField();updateDash();autoSave();
+        var tp=field.reduce(function(s,w){return s+wPos(w);},0);
+        var ta=field.reduce(function(s,w){return s+wAct(w);},0);
+        alert('Обновлено: '+changes.length+' сотрудников\nИтого: '+fmt(tp)+' поз, начислено: '+fmt(ta)+' ₽\n\nНажмите 💾 Сохранить.');
+      }catch(ex){alert('Ошибка: '+ex.message);}
+    });
+  };
+  inp.click();
+}
+
+// ─── ЭКСПОРТ ПО ИСПОЛНИТЕЛЮ ───
+function exportPerWorker(){
+  var inp=document.createElement('input');inp.type='file';inp.accept='.xlsx,.xls,.csv';
+  inp.onchange=function(e){
+    var file=e.target.files[0];if(!file)return;
+    file.arrayBuffer().then(function(ab){
+      try{
+        var wb_in=XLSX.read(ab,{type:'array'});
+        var ws_in=wb_in.Sheets[wb_in.SheetNames[0]];
+        var rows=XLSX.utils.sheet_to_json(ws_in,{defval:null});
+        if(!rows.length){alert('Файл пустой');return;}
+
+        var keys=Object.keys(rows[0]||{});
+        var emailCol=keys.find(function(k){return/^email$/i.test(k);})||keys.find(function(k){return/scanned_by/i.test(k);});
+        var catCol=keys.find(function(k){return/катег|category/i.test(k);})||'category';
+        var floorCol=keys.find(function(k){return/этаж|floor/i.test(k);})||'floor';
+        var cntCol=keys.find(function(k){return/^count$|кол|qty/i.test(k);})||'count';
+        var subCol=keys.find(function(k){return/subtype|подтип/i.test(k);})||null;
+        if(!emailCol){alert('Нет колонки email.');return;}
+
+        // Group by email
+        var byEmail={};
+        rows.forEach(function(r){
+          var email=String(r[emailCol]||'').trim().toLowerCase();
+          if(!email||EXCLUDE_EMAILS.indexOf(email)>=0)return;
+          if(!byEmail[email])byEmail[email]=[];
+          byEmail[email].push(r);
+        });
+
+        var wb_out=XLSX.utils.book_new();
+        var sumRows=[['ФИО','Email','Позиций','×30₽','×40₽','×50₽','Начислено (₽)','Выплачено (₽)','Остаток (₽)']];
+
+        Object.keys(byEmail).sort().forEach(function(email){
+          var wr=byEmail[email];
+          var w=field.find(function(x){return(x.email||'').toLowerCase()===email;});
+          var wName=w?w.name:email;
+
+          var sheetData=[['Этаж','Категория','Подтип','Кол-во','Ставка (₽)','Сумма (₽)']];
+          var totPos=0,tot30=0,tot40=0,tot50=0,totAmt=0;
+          wr.forEach(function(r){
+            var cat=String(r[catCol]||'');
+            var floor=normFloor(r[floorCol]);
+            var cnt=parseInt(r[cntCol])||1;
+            var sub=subCol?String(r[subCol]||'').trim():'прочее';
+            var rate=getRate(email,floor,cat,sub);
+            var amt=cnt*rate;
+            totPos+=cnt;totAmt+=amt;
+            if(rate===30)tot30+=cnt;else if(rate===50)tot50+=cnt;else tot40+=cnt;
+            sheetData.push([r[floorCol]||'',cat,sub,cnt,rate,amt]);
+          });
+          sheetData.push(['ИТОГО','','',totPos,'',totAmt]);
+          sheetData.push(['×30₽: '+tot30,'×40₽: '+tot40,'×50₽: '+tot50,'','','']);
+
+          var ws_out=XLSX.utils.aoa_to_sheet(sheetData);
+          ws_out['!cols']=[{wch:10},{wch:22},{wch:12},{wch:8},{wch:10},{wch:12}];
+          var sheetName=(wName).replace(/[:\\\/\?\*\[\]]/g,'').slice(0,28);
+          XLSX.utils.book_append_sheet(wb_out,ws_out,sheetName);
+
+          var paid=w?wPaid(w):0;
+          if(w){var ldr=getLeader(w);if(ldr)paid+=memberAlloc(w,ldr);}
+          sumRows.push([wName,email,totPos,tot30,tot40,tot50,totAmt,Math.round(paid),Math.round(totAmt-paid)]);
+        });
+
+        // Summary sheet first
+        var ws_sum=XLSX.utils.aoa_to_sheet(sumRows);
+        ws_sum['!cols']=[{wch:28},{wch:28},{wch:9},{wch:7},{wch:7},{wch:7},{wch:16},{wch:16},{wch:14}];
+        XLSX.utils.book_append_sheet(wb_out,ws_sum,'Сводка');
+        wb_out.SheetNames.unshift(wb_out.SheetNames.pop());
+
+        var d=new Date();
+        var fname='TGI_исполнители_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.xlsx';
+        XLSX.writeFile(wb_out,fname);
+        alert('Готово: '+fname+'\n'+(wb_out.SheetNames.length-1)+' исполнителей + Сводка');
+      }catch(ex){alert('Ошибка: '+ex.message);}
+    });
+  };
+  inp.click();
+}
+
+// ─── IMPORT PAYROLL ───
+function importPayroll(){
+  var inp=document.createElement('input');inp.type='file';inp.accept='.xlsx,.xls,.csv';
+  inp.onchange=function(e){
+    var file=e.target.files[0];if(!file)return;
+    file.arrayBuffer().then(function(ab){
+      try{
+        var wb=XLSX.read(ab,{type:'array'});
+        var ws=wb.Sheets[wb.SheetNames[wb.SheetNames.length-1]];
+        var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        var parsed=[];
+        rows.forEach(function(row){
+          var cells=row.map(function(c){return String(c||'').trim();});
+          var name='',amount=0;
+          for(var i=0;i<cells.length;i++){if(!name&&cells[i].length>5&&!/^\d/.test(cells[i])&&/[а-яёА-ЯЁ]{3,}/.test(cells[i]))name=cells[i];}
+          for(var j=cells.length-1;j>=0;j--){var n=+String(cells[j]).replace(',','.');if(n>100){amount=n;break;}}
+          if(name&&amount>0)parsed.push({name:name,amount:amount});
+        });
+        if(!parsed.length){alert('Не найдено строк с ФИО и суммой.');return;}
+        function norm(s){return s.toLowerCase().replace(/ё/g,'е').replace(/[^а-яa-z ]/g,'');}
+        var msg='Найдено: '+parsed.length+' записей\n\n',matched=[];
+        parsed.forEach(function(p){
+          var pW=norm(p.name).split(' ').filter(function(w){return w.length>2;});
+          var w=field.find(function(fw){return pW.filter(function(pw){return norm(fw.name).indexOf(pw)>=0;}).length>=2;});
+          if(w){msg+='✅ '+p.name+' → +'+fmt(p.amount)+' ₽\n';matched.push({w:w,amount:p.amount});}
+          else{msg+='❌ '+p.name+' ('+fmt(p.amount)+' ₽)\n';}
+        });
+        if(!matched.length){alert('Никого не сопоставить.\n\n'+msg);return;}
+        var mode=confirm(msg+'\nОК — ДОБАВИТЬ к существующим\nОтмена — ЗАМЕНИТЬ');
+        var d=todayRu();
+        matched.forEach(function(item){
+          if(!Array.isArray(item.w.payments))item.w.payments=[];
+          if(mode){item.w.payments.push({id:uid(),date:d,type:'self',amount:item.amount,note:'Реестр'});}
+          else{item.w.payments=item.w.payments.filter(function(p){return p.type!=='self';});item.w.payments.push({id:uid(),date:d,type:'self',amount:item.amount,note:'Реестр'});}
+          item.w.date=d;
+        });
+        renderField();updateDash();autoSave();
+        alert('Обновлено: '+matched.length+'. Нажмите 💾 Сохранить.');
+      }catch(ex){alert('Ошибка: '+ex.message);}
+    });
+  };
+  inp.click();
+}
+
+// ─── EXCEL EXPORT ───
+function updExUI(){document.getElementById('ex-cust').style.display=document.getElementById('ex-per').value==='custom'?'grid':'none';}
+function getPR(type){
+  var now=new Date(),f=null,t=null;
+  if(type==='all')return{f:null,t:null};
+  if(type==='today'){f=t=iso(now);}else if(type==='week'){var d=new Date(now);d.setDate(d.getDate()-d.getDay()+1);f=iso(d);t=iso(now);}
+  else if(type==='month'){f=iso(new Date(now.getFullYear(),now.getMonth(),1));t=iso(now);}
+  else if(type==='quarter'){var q=Math.floor(now.getMonth()/3);f=iso(new Date(now.getFullYear(),q*3,1));t=iso(now);}
+  else{f=document.getElementById('ex-from').value||null;t=document.getElementById('ex-to').value||null;}
+  return{f:f,t:t};
+}
+function doExport(){
+  var pr=getPR(document.getElementById('ex-per').value);var f=pr.f,t=pr.t;
+  var wb=XLSX.utils.book_new();
+  if(document.getElementById('ex-i').checked){
+    var ir=income.filter(function(r){return inP(r.date,f,t);});
+    var d=[['Дата','Источник','Тип','Сумма','УСН 6%','Нетто','Примечание']];
+    ir.forEach(function(r){var u=r.type==='bank'?Math.round(r.amount*0.06):0;d.push([r.date,r.source,r.type==='cash'?'Нал':'Безнал',r.amount,u,r.amount-u,r.note]);});
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(d),'Приход');
+  }
+  if(document.getElementById('ex-f').checked){
+    var d2=[['ФИО','Email','Позиций','Нач., ₽','Нал','Перевод','Самозан.','Выплачено','Остаток','Группа/участники','Статус']];
+    field.filter(function(w){return!isMember(w);}).sort(function(a,b){return a.name.localeCompare(b.name,'ru');}).forEach(function(w){
+      var act=gAct(w),paid=gPaid(w),st=act===0?'—':paid>=act?'Оплачено':paid>0?'Частично':'Долг';
+      var members=(w.paysFor||[]).map(function(id){var m=field.find(function(x){return x.id===id;});return m?m.name:'';}).join('; ');
+      d2.push([w.name,w.email,gPos(w),act,wPaid(w,'cash'),wPaid(w,'transfer'),wPaid(w,'self'),paid,act-paid,members,st]);
+    });
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(d2),'Полевые');
+  }
+  if(document.getElementById('ex-p').checked){
+    var d3=[['ФИО','Email','Дата','Тип','Сумма, ₽','Примечание']];
+    field.sort(function(a,b){return a.name.localeCompare(b.name,'ru');}).forEach(function(w){
+      wPays(w).forEach(function(p){d3.push([w.name,w.email,p.date,PT_TYPES[p.type]||p.type,p.amount,p.note||'']);});
+    });
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(d3),'Выплаты_детально');
+  }
+  if(document.getElementById('ex-e').checked){
+    var er=expenses.filter(function(r){return inP(r.date,f,t);});
+    var d4=[['Дата','Тип','Описание','Кол-во','Ед.','Цена','Итого','Примечание']];
+    er.forEach(function(r){d4.push([r.date,EXP_TYPES[r.type]||r.type,r.desc,r.qty,r.unit,r.price,r.qty*r.price,r.note||'']);});
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(d4),'Расходы');
+  }
+  if(document.getElementById('ex-s').checked){
+    var iF2=income.filter(function(r){return inP(r.date,f,t);});
+    var iC2=iF2.filter(function(r){return r.type==='cash';}).reduce(function(s,r){return s+r.amount;},0);
+    var iB2=iF2.filter(function(r){return r.type==='bank';}).reduce(function(s,r){return s+r.amount;},0);
+    var u2=Math.round(iB2*0.06);
+    var fA=field.reduce(function(s,w){return s+wAct(w);},0);
+    var fP=field.reduce(function(s,w){return s+wPaid(w);},0);
+    var eT2=expenses.filter(function(r){return inP(r.date,f,t);}).reduce(function(s,r){return s+r.qty*r.price;},0);
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['СВОДКА TGI-Scan',''],['',''],['ПРИХОД',''],['Наличные',iC2],['Безнал',iB2],['УСН 6%',u2],['Нетто',iC2+iB2-u2],['',''],['ПОЛЕВЫЕ',''],['Начислено',fA],['Выплачено',fP],['Долг',Math.max(0,fA-fP)],['',''],['РАСХОДЫ',''],['Итого',eT2],['',''],['ОСТАТОК',iC2+iB2-u2-fP-eT2]]),'Сводка');
+  }
+  XLSX.writeFile(wb,'TGI_Finance_'+today()+'.xlsx');closeModal('m-export');
+}
+
+// ─── MODALS ───
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.addEventListener('click',function(e){if(e.target.classList.contains('ovl'))e.target.classList.remove('open');});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')document.querySelectorAll('.ovl.open').forEach(function(el){el.classList.remove('open');});});
+
+
+// ════ BANK ════
+var bank_ops = [];
+var _bimpOps = [];
+
+var BCAT = {income:'📥 Поступление', payroll:'🟣 Реестр', withdraw:'💸 Вывод', bank_fee:'🏦 Комиссия', other:'◾ Прочее'};
+
+function renderBank() {
+  if (!bank_ops.length) {
+    document.getElementById('tb-bank').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">Нет данных — загрузите выписку СберБизнес</td></tr>';
+    document.getElementById('bank-kpi').innerHTML = '';
+    document.getElementById('sec-recon').style.display = 'none';
+    return;
+  }
+  var ft = document.getElementById('bk-ft').value;
+  var st = document.getElementById('bk-st').value;
+  var rows = bank_ops.filter(function(op) {
+    if (ft && op.cat !== ft) return false;
+    if (st === 'ok' && !op.imported) return false;
+    if (st === 'new' && op.imported) return false;
+    return true;
+  });
+
+  // KPI
+  var totIn  = bank_ops.reduce(function(s,o){return s+(o.in||0);},0);
+  var totOut = bank_ops.reduce(function(s,o){return s+(o.out||0);},0);
+  var payOut = bank_ops.filter(function(o){return o.cat==='payroll';}).reduce(function(s,o){return s+(o.out||0);},0);
+  var unimported = bank_ops.filter(function(o){return o.cat==='income'&&!o.imported;}).length;
+  document.getElementById('bank-kpi').innerHTML =
+    bKpi('kc','Поступления',fmt(totIn)+' ₽', bank_ops.filter(function(o){return o.in>0;}).length+' оп.') +
+    bKpi('kr','Списания',   fmt(totOut)+' ₽', bank_ops.filter(function(o){return o.out>0;}).length+' оп.') +
+    bKpi('kp','Реестры',    fmt(payOut)+' ₽', bank_ops.filter(function(o){return o.cat==='payroll';}).length+' реестров') +
+    bKpi(unimported?'ka':'kc', unimported?'Не учтено':'Всё учтено', unimported?unimported+' поступл.':'✓', unimported?'Требуют импорта':'');
+  document.getElementById('btn-imp-sel').style.display = rows.some(function(o){return !o.imported&&o.cat==='income';}) ? 'inline-flex' : 'none';
+
+  document.getElementById('tb-bank').innerHTML = rows.map(function(op) {
+    var can = !op.imported && (op.cat==='income'||op.cat==='other'||op.cat==='bank_fee'||op.cat==='withdraw');
+    var catPill = catB(op.cat);
+    var stPill  = op.imported
+      ? '<span class="pill pg" style="font-size:9px">✓ учтено</span>'
+      : '<span class="pill pa" style="font-size:9px">⚠ нет</span>';
+    var oid = op.id;
+    return '<tr class="hov">' +
+      '<td><input type="checkbox" class="bchk" data-id="' + oid + '"' + (can?'':' disabled style="opacity:.3"') + '></td>' +
+      '<td class="mono" style="font-size:11px;color:var(--muted)">' + op.date + '</td>' +
+      '<td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:155px">' + esc(op.counterparty||'') + '</td>' +
+      '<td style="font-size:11px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis" title="' + esc(op.purpose||'') + '">' + esc((op.purpose||'').length>72?(op.purpose||'').slice(0,72)+'…':(op.purpose||'')) + '</td>' +
+      '<td class="r mono" style="color:var(--green);font-weight:500">' + (op.in?fmt(op.in)+' ₽':'—') + '</td>' +
+      '<td class="r mono" style="color:var(--red)">'               + (op.out?fmt(op.out)+' ₽':'—') + '</td>' +
+      '<td>' + catPill + '</td>' +
+      '<td>' + stPill  + '</td>' +
+      '<td>' + (can ? '<button class="bi" title="Импортировать" onclick="openBimpOne(\'' + oid + '\')">📥</button>' : '') + '</td></tr>';
+  }).join('');
+
+  var tIn  = rows.reduce(function(s,o){return s+(o.in||0);},0);
+  var tOut = rows.reduce(function(s,o){return s+(o.out||0);},0);
+  document.getElementById('tf-bank').innerHTML =
+    '<b>' + rows.length + '</b> операций &nbsp;|&nbsp; Приход: <b class="mono" style="color:var(--green)">' + fmt(tIn) + '</b> ₽ &nbsp; Расход: <b class="mono" style="color:var(--red)">' + fmt(tOut) + '</b> ₽';
+
+  renderRecon();
+  // Update dates badge
+  var dates = bank_ops.map(function(o){return o.date;}).sort();
+  if (dates.length) document.getElementById('bank-period').textContent = dates[0] + ' — ' + dates[dates.length-1];
+}
+
+function bKpi(cls,lbl,val,sub){return '<div class="kpi '+cls+'"><div class="kpi-l">'+lbl+'</div><div class="kpi-v" style="font-size:15px">'+val+'</div><div class="kpi-s">'+sub+'</div></div>';}
+
+function catB(cat) {
+  if (cat==='income')   return '<span class="pill pp"  style="font-size:9px">' + BCAT[cat] + '</span>';
+  if (cat==='payroll')  return '<span class="pill ps"  style="font-size:9px">' + BCAT[cat] + '</span>';
+  if (cat==='withdraw') return '<span class="pill pa"  style="font-size:9px">' + BCAT[cat] + '</span>';
+  if (cat==='bank_fee') return '<span class="pill"     style="font-size:9px;background:var(--hov);">' + (BCAT[cat]||cat) + '</span>';
+  return '<span class="pill" style="font-size:9px;background:var(--hov);">' + (BCAT[cat]||cat) + '</span>';
+}
+
+function renderRecon() {
+  var reestrs = bank_ops.filter(function(o){return o.cat==='payroll'&&o.reestr;});
+  var sec = document.getElementById('sec-recon');
+  if (!reestrs.length) { sec.style.display='none'; return; }
+  sec.style.display = 'block';
+  var selfByDate = {};
+  field.forEach(function(w) {
+    wPays(w).filter(function(p){return p.type==='self';}).forEach(function(p) {
+      selfByDate[p.date] = (selfByDate[p.date]||0) + (p.amount||0);
+    });
+  });
+  document.getElementById('tb-recon').innerHTML = reestrs.map(function(op) {
+    var bAmt = op.out;
+    var fAmt = selfByDate[op.date]||0;
+    var diff = bAmt - fAmt;
+    var ok   = Math.abs(diff) < 1;
+    return '<tr class="hov">' +
+      '<td><b>Реестр №'+op.reestr+'</b></td>' +
+      '<td class="mono" style="font-size:11px;color:var(--muted)">'+op.date+'</td>' +
+      '<td class="r mono" style="font-weight:500">'+fmt(bAmt)+' ₽</td>' +
+      '<td class="r mono" style="color:var(--muted)">'+fmt(fAmt)+' ₽</td>' +
+      '<td class="r mono" style="color:'+(ok?'var(--green)':diff>0?'var(--red)':'var(--amber)')+';">'+(ok?'—':(diff>0?'+':'')+fmt(diff))+' ₽</td>' +
+      '<td>'+(ok?'<span class="pill pg" style="font-size:9px">✓</span>':'<span class="pill pn" style="font-size:9px">расх.</span>')+'</td></tr>';
+  }).join('');
+}
+
+function toggleAllChk(v) { document.querySelectorAll('.bchk:not([disabled])').forEach(function(c){c.checked=v;}); }
+
+function openBimpOne(oid) {
+  var op = bank_ops.find(function(o){return o.id===oid;});
+  if (!op) return;
+  _bimpOps = [op];
+  buildBimpModal([op]);
+  openModal('m-bimp');
+}
+
+function importSelected() {
+  var ids = [];
+  document.querySelectorAll('.bchk:checked').forEach(function(c){ids.push(c.getAttribute('data-id'));});
+  if (!ids.length) { alert('Выберите операции'); return; }
+  _bimpOps = bank_ops.filter(function(o){return ids.indexOf(o.id)>=0;});
+  buildBimpModal(_bimpOps);
+  openModal('m-bimp');
+}
+
+function buildBimpModal(ops) {
+  document.getElementById('bimp-tit').textContent = 'Импорт операций (' + ops.length + ')';
+  var h = '';
+  ops.forEach(function(op, i) {
+    h += '<div style="background:var(--ibg);border:1px solid var(--border);border-radius:7px;padding:10px;margin-bottom:8px">';
+    h += '<div style="display:flex;justify-content:space-between;margin-bottom:5px">';
+    h += '<b style="font-size:12px">' + op.date + '</b>';
+    if (op.in)  h += '<span class="mono" style="color:var(--green);font-weight:600">+' + fmt(op.in)  + ' ₽</span>';
+    if (op.out) h += '<span class="mono" style="color:var(--red);font-weight:600">−'   + fmt(op.out) + ' ₽</span>';
+    h += '</div>';
+    h += '<div style="font-size:11px;color:var(--muted);margin-bottom:7px">' + esc(op.counterparty||'') + '</div>';
+    h += '<div style="font-size:10px;color:var(--muted);margin-bottom:7px;line-height:1.4">' + esc((op.purpose||'').slice(0,110)) + '</div>';
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+    h += '<select class="inp" id="bd' + i + '" style="font-size:11px">';
+    if (op.in > 0) {
+      h += '<option value="income">→ Приход</option>';
+      h += '<option value="skip">Пропустить</option>';
+    } else {
+      h += '<option value="expense">→ Расход</option>';
+      h += '<option value="skip">Пропустить</option>';
+    }
+    h += '</select>';
+    if (op.in > 0) {
+      h += '<select class="inp" id="bt' + i + '" style="font-size:11px"><option value="bank">🏦 Безнал</option><option value="cash">💵 Нал</option></select>';
+    } else {
+      h += '<select class="inp" id="bt' + i + '" style="font-size:11px"><option value="fix">🔒 Фиксир.</option><option value="mat">📦 Расх.</option><option value="hour">⏱ Почас.</option></select>';
+    }
+    h += '</div></div>';
+  });
+  document.getElementById('bimp-body').innerHTML = h;
+}
+
+function confirmBankImport() {
+  var cnt = 0;
+  _bimpOps.forEach(function(op, i) {
+    var dest = document.getElementById('bd' + i);
+    var type = document.getElementById('bt' + i);
+    if (!dest || dest.value === 'skip') return;
+    if (dest.value === 'income') {
+      income.push({id:uid(), date:op.date, type:type?type.value:'bank', source:op.counterparty||'', amount:op.in, note:(op.purpose||'').slice(0,120)});
+    } else {
+      expenses.push({id:uid(), date:op.date, type:type?type.value:'fix', desc:op.counterparty||'', qty:1, unit:'услуга', price:op.out, note:(op.purpose||'').slice(0,120)});
+    }
+    op.imported = true; cnt++;
+  });
+  closeModal('m-bimp');
+  renderIncome(); renderExpenses(); renderBank(); updateDash(); autoSave();
+  if (cnt) alert('Импортировано: ' + cnt + '. Нажмите 💾 Сохранить.');
+}
+
+function importBankFile() {
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.xlsx,.xls';
+  inp.onchange = function(e) {
+    var file = e.target.files[0]; if (!file) return;
+    file.arrayBuffer().then(function(ab) {
+      try {
+        var wb = XLSX.read(ab, {type:'array'});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        var ops = [], dateRe = /^\d{2}\.\d{2}\.\d{4}$/;
+        rows.forEach(function(row) {
+          var date = String(row[2]||'').trim();
+          if (!dateRe.test(date)) return;
+          var cp  = String(row[4]||'').trim();
+          var inp2 = parseFloat(String(row[5]||'').replace(/[, ]/g,''))||0;
+          var out2 = parseFloat(String(row[7]||'').replace(/[, ]/g,''))||0;
+          var pur = String(row[9]||'').trim();
+          if (!inp2 && !out2) return;
+          var p = pur.toLowerCase(), cat = 'other', reestr = null;
+          if (p.indexOf('самозанятым')>=0 && p.indexOf('реестр')>=0) {
+            cat = 'payroll';
+            var nm = pur.match(/реестр[а-я]* №(\d+)/i);
+            if (nm) reestr = +nm[1];
+          } else if (p.indexOf('комиссия')>=0||p.indexOf('тариф')>=0) {
+            cat = 'bank_fee';
+          } else if (p.indexOf('предпринимательской')>=0) {
+            cat = 'withdraw';
+          } else if (inp2 > 0) {
+            cat = 'income';
+          }
+          var alreadyIn = cat==='income' && income.some(function(r){return Math.abs(r.amount-inp2)<1&&r.date===date;});
+          ops.push({id:uid(), date:date, counterparty:cp, in:Math.round(inp2), out:Math.round(out2), purpose:pur, cat:cat, reestr:reestr, imported:alreadyIn});
+        });
+        if (!ops.length) { alert('Операции не найдены. Загрузите выписку СберБизнес (xlsx).'); return; }
+        var existing = {};
+        bank_ops.forEach(function(o){existing[o.date+'_'+(o.in||0)+'_'+(o.out||0)] = 1;});
+        var added = 0;
+        ops.forEach(function(op) {
+          var key = op.date+'_'+(op.in||0)+'_'+(op.out||0);
+          if (!existing[key]) { bank_ops.push(op); added++; }
+        });
+        renderBank(); autoSave();
+        alert('Загружено ' + added + ' новых операций из ' + ops.length + '.\nПроверьте статус и нажмите 📥 для импорта в финансы.');
+      } catch(ex) { alert('Ошибка: ' + ex.message); }
+    });
+  };
+  inp.click();
+}
+
+// ─── PERSIST ───
+function autoSave(){
+  try{localStorage.setItem('tgi8i',JSON.stringify(income));localStorage.setItem('tgi8f',JSON.stringify(field));localStorage.setItem('tgi8e',JSON.stringify(expenses));localStorage.setItem('tgi6b',JSON.stringify(bank_ops));}catch(x){}
+}
+function saveAll(){
+  var tag=document.getElementById('saved-data');
+  tag.textContent=JSON.stringify({income:income,field:field,expenses:expenses,bank_ops:bank_ops});
+  var blob=new Blob(['<!DOCTYPE html>\n'+document.documentElement.outerHTML],{type:'text/html;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='TGI_Finance_v9.html';a.click();URL.revokeObjectURL(a.href);
+  autoSave();
+  var b=document.getElementById('bsave');b.textContent='✓ Скачан';b.style.color='var(--green)';
+  setTimeout(function(){b.textContent='💾 Сохранить';b.style.color='';},2000);
+}
+function exportJSON(){
+  var blob=new Blob([JSON.stringify({v:7,income:income,field:field,expenses:expenses,bank_ops:bank_ops,ts:new Date().toISOString()},null,2)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='TGI_backup_'+today()+'.json';a.click();URL.revokeObjectURL(a.href);
+}
+function importJSON(){
+  var inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=function(e){
+    var f=e.target.files[0];if(!f)return;
+    var r=new FileReader();r.onload=function(ev){
+      try{
+        var d=JSON.parse(ev.target.result);
+        if(!d.income||!d.field||!d.expenses){alert('Неверный формат');return;}
+        if(!confirm('Загрузить? ('+d.income.length+' приход, '+d.field.length+' полевых)\nТекущие данные будут заменены.'))return;
+        income=d.income;field=d.field;expenses=d.expenses;if(d.bank_ops)bank_ops=d.bank_ops;autoSave();renderAll();alert('✓');
+      }catch(ex){alert('Ошибка: '+ex.message);}
+    };r.readAsText(f);
+  };inp.click();
+}
+function renderAll(){renderIncome();renderField();renderExpenses();renderBank();updateDash();}
+
+// ─── INIT ───
+(function(){
+  var ok=false;
+  try{
+    var tag=document.getElementById('saved-data');
+    if(tag&&tag.textContent.trim().length>2){
+      var d=JSON.parse(tag.textContent);
+      if(d.field&&d.field.length){field=d.field;ok=true;}
+      if(d.income&&d.income.length)income=d.income;
+      if(d.expenses&&d.expenses.length)expenses=d.expenses;
+      if(d.bank_ops&&d.bank_ops.length)bank_ops=d.bank_ops;
+    }
+  }catch(x){console.warn(x);}
+  if(!ok){
+    try{
+      ['tgi8f','tgi7f','tgi6f','tgi5f'].forEach(function(k){if(!ok){var v=localStorage.getItem(k);if(v){field=JSON.parse(v);ok=true;}}});
+      ['tgi8i','tgi7i','tgi6i','tgi5i'].forEach(function(k){var v=localStorage.getItem(k);if(v)income=JSON.parse(v);});
+      ['tgi8e','tgi7e','tgi6e','tgi5e'].forEach(function(k){var v=localStorage.getItem(k);if(v)expenses=JSON.parse(v);});
+    }catch(x){}
+  }
+  renderAll();
+}());
+
+</script>
+
+<!-- MODAL: BANK IMPORT -->
+<div class="ovl" id="m-bimp"><div class="modal" style="width:540px">
+  <div class="mh"><h3 id="bimp-tit">Импорт операций</h3><button class="bi del" onclick="closeModal('m-bimp')">✕</button></div>
+  <div id="bimp-body"></div>
+  <div class="mf">
+    <button class="btn bg" onclick="closeModal('m-bimp')">Отмена</button>
+    <button class="btn bp" onclick="confirmBankImport()">Импортировать</button>
+  </div>
+</div></div>
+
+
+</body></html>
