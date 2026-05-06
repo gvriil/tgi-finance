@@ -1593,7 +1593,7 @@ function drawHourly(){
   }).join('');
   if(_EH.length){
     list.innerHTML+='<div style="font-size:11px;color:var(--muted);padding:3px 0">'+
-      '<span style="color:var(--amber);font-family:'IBM Plex Mono',monospace">Итого: '+totalH+'ч × ср.'+
+      '<span style="color:var(--amber);font-family:IBM Plex Mono,monospace">Итого: '+totalH+'ч × ср.'+
       (_EH.length?Math.round(total/totalH):HOURLY_RATE_DEFAULT)+'₽ = <b style="color:var(--amber)">'+fmt(total)+' ₽</b></span>'+
       '<span style="margin-left:10px">к выплате отдельно от позиций</span></div>';
   }
