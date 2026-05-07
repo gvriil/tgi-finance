@@ -323,6 +323,15 @@ select.sty:focus{border-color:var(--accent)}
       </div>
     </div>
   </div>
+
+  <!-- Детализация по исполнителям -->
+  <div class="sec">
+    <div class="sh">
+      <h3>Детализация по исполнителям</h3>
+      <span style="font-size:10px;color:var(--muted)">позиции · доп. работы · выплаты</span>
+    </div>
+    <div id="dash-field-detail"></div>
+  </div>
 </div>
 
 <!-- ПРИХОД -->
@@ -532,7 +541,10 @@ select.sty:focus{border-color:var(--accent)}
     <div><label class="lbl">Дата</label><input class="inp" type="date" id="me-date"></div>
     <div><label class="lbl">Тип</label><select class="inp" id="me-type" onchange="updExpUI()" data-ddg-inputtype="unknown"><option value="mat">📦 Расходники</option><option value="hour">⏱ Почасовой</option><option value="day">📅 Подённый</option><option value="fix">🔒 Фиксированный</option></select></div>
   </div>
-  <div style="margin-bottom:10px"><label class="lbl">Описание</label><input class="inp" type="text" id="me-desc" list="dl-descs" data-ddg-inputtype="unknown"><datalist id="dl-descs"><option value="Маневич Г. верификация удаленно"></option><option value="Ярошенко А.В."></option><option value="Ирина верификация"></option><option value="Быков верификация"></option><option value="Самарцев верификация"></option><option value="Гайгер верификация"></option><option value="Асанова верификация"></option><option value="Бордюков"></option><option value="Гусева Наталья Верификация озеленения"></option><option value="Волов Д.А."></option></datalist></div>
+  <div class="m2" style="margin-bottom:10px">
+    <div><label class="lbl">Описание</label><input class="inp" type="text" id="me-desc" list="dl-descs" data-ddg-inputtype="unknown"><datalist id="dl-descs"><option value="Маневич Г. верификация удаленно"></option><option value="Ярошенко А.В."></option><option value="Ирина верификация"></option><option value="Быков верификация"></option><option value="Самарцев верификация"></option><option value="Гайгер верификация"></option><option value="Асанова верификация"></option><option value="Бордюков"></option><option value="Гусева Наталья Верификация озеленения"></option><option value="Волов Д.А."></option></datalist></div>
+    <div><label class="lbl">Исполнитель</label><select class="inp" id="me-worker" data-ddg-inputtype="unknown"><option value="">— не указан —</option></select></div>
+  </div>
   <div class="m3">
     <div><label class="lbl" id="me-ql">Кол-во</label><input class="inp r" type="number" id="me-qty" value="1" step="any" oninput="updExpP()" data-ddg-inputtype="unknown"></div>
     <div><label class="lbl">Единица</label><select class="inp" id="me-unit" data-ddg-inputtype="identities.addressStreet2"><option>шт</option><option>час</option><option>день</option><option>услуга</option><option>упак</option></select></div>
@@ -1109,6 +1121,12 @@ function stBadge(st){
 // ─── EXPENSES ───
 var EXP_TYPES={mat:'📦 Расходники',hour:'⏱ Почасовой',day:'📅 Подённый',fix:'🔒 Фиксир.'};
 function openExpModal(id){
+  // Populate worker selector
+  var wsel=document.getElementById('me-worker');
+  if(wsel){
+    wsel.innerHTML='<option value="">— не указан —</option>'+
+      field.map(function(w){return'<option value="'+w.id+'">'+esc(w.name)+'</option>';}).join('');
+  }
   refreshDL();
   var r=id?expenses.find(function(x){return x.id===id;}):null;
   document.getElementById('me-tit').textContent=r?'Редактировать расход':'Добавить расход';
@@ -1116,6 +1134,7 @@ function openExpModal(id){
   document.getElementById('me-date').value=r?(i2r(r.date)||today()):today();
   document.getElementById('me-type').value=r?r.type:'mat';
   document.getElementById('me-desc').value=r?r.desc:'';
+  var mw=document.getElementById('me-worker');if(mw)mw.value=r?(r.worker||''):'';
   document.getElementById('me-qty').value=r?r.qty:1;
   document.getElementById('me-unit').value=r?r.unit:'шт';
   document.getElementById('me-price').value=r?r.price:'';
@@ -1137,7 +1156,7 @@ function updExpP(){
 }
 function saveExp(){
   var id=document.getElementById('me-id').value;
-  var obj={id:id||uid(),date:r2i(document.getElementById('me-date').value),type:document.getElementById('me-type').value,desc:document.getElementById('me-desc').value,qty:+document.getElementById('me-qty').value||1,unit:document.getElementById('me-unit').value,price:+document.getElementById('me-price').value||0,note:document.getElementById('me-note').value};
+  var obj={id:id||uid(),date:r2i(document.getElementById('me-date').value),type:document.getElementById('me-type').value,desc:document.getElementById('me-desc').value,qty:+document.getElementById('me-qty').value||1,unit:document.getElementById('me-unit').value,price:+document.getElementById('me-price').value||0,note:document.getElementById('me-note').value,worker:document.getElementById('me-worker')?document.getElementById('me-worker').value:''};
   if(id){var i=expenses.findIndex(function(x){return x.id===id;});if(i>=0)expenses[i]=obj;}else expenses.push(obj);
   closeModal('m-expense');renderExpenses();updateDash();autoSave();
 }
@@ -1187,6 +1206,98 @@ function updateDash(){
   var be=document.getElementById('s-bal');if(be){be.textContent=fmt(bal)+' ₽';be.style.color=bal>=0?'var(--green)':'var(--red)';}
   ss('s-bdf',fmt(fDebt)+' ₽');
   var br=document.getElementById('s-br');if(br){br.textContent=fmt(rBal)+' ₽';br.style.color=rBal>=0?'var(--green)':'var(--red)';}
+  renderDashDetail();
+}
+
+function renderDashDetail(){
+  var el=document.getElementById('dash-field-detail');
+  if(!el)return;
+  var id2w={};field.forEach(function(w){id2w[w.id]=w;});
+
+  function isLeader(w){return w.paysFor&&w.paysFor.length>0;}
+  function leaderOf(w){return field.find(function(x){return(x.paysFor||[]).indexOf(w.id)>=0;});}
+
+  // Build rows: leaders first, then standalone, skip pure members
+  var rows=[];
+  field.forEach(function(w){
+    if(leaderOf(w))return; // rendered under leader
+    var wPos2=wPos(w); var wAcc=wAct(w); var wPd=wPaid(w);
+    var wH=wHourlyTotal(w); var wHh=wHourlyH(w);
+    var members=(w.paysFor||[]).map(function(id){return id2w[id];}).filter(Boolean);
+    var grpAcc=wAcc+members.reduce(function(s,m){return s+wAct(m);},0);
+    var grpPaid=wPd+members.reduce(function(s,m){return s+wPaid(m);},0);
+    var grpH=wH+members.reduce(function(s,m){return s+wHourlyTotal(m);},0);
+    var grpPos2=wPos2+members.reduce(function(s,m){return s+wPos(m);},0);
+    var debt=grpAcc-grpPaid;
+
+    var r='<div style="border-bottom:1px solid var(--border)">';
+    // Leader / solo header
+    var debtTag=debt>0?'<span class="debt-tag">−'+fmt(debt)+' ₽</span>':debt<0?'<span style="font-size:10px;color:var(--amber);margin-left:6px">аванс '+fmt(-debt)+' ₽</span>':'<span class="ok-tag">✓</span>';
+    r+='<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:var(--panel)">';
+    r+='<div style="display:flex;align-items:center;gap:8px">';
+    r+='<span style="font-weight:600;font-size:13px">'+esc(w.name)+'</span>';
+    if(members.length) r+='<span class="member-tag">группа · '+members.length+' чел.</span>';
+    r+=debtTag;
+    r+='</div>';
+    r+='<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--muted)">'+fmt(grpPos2)+' поз</span>';
+    r+='</div>';
+
+    // Detail rows
+    r+='<div style="padding:0 14px 8px">';
+    // Function to render one worker's detail
+    function workerRows(ww, indent){
+      var prefix=indent?'<span style="color:var(--muted);margin-right:6px">↳</span>':'';
+      var hwrk=ww.hourlyWork||[];
+      var wAcc2=wAct(ww); var wPos3=wPos(ww); var wH2=wHourlyTotal(ww);
+      var rows2='';
+
+      // Positions breakdown
+      if(wPos3>0){
+        var posBreak=(ww.positions||[]).filter(function(p){return p.count>0;}).map(function(p){
+          return'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted);margin-right:6px">'+fmt(p.count)+'×'+fmt(p.rate)+'₽</span>';
+        }).join('');
+        rows2+='<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">';
+        rows2+='<div style="display:flex;align-items:center;gap:4px">'+prefix+'<span style="font-size:11px;color:var(--muted)">📋 Позиции</span>'+(indent?'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+esc(ww.name.split(' ')[0])+'</span>':'')+'</div>';
+        rows2+='<div style="display:flex;align-items:center;gap:8px">'+posBreak+'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:600">'+fmt(wAcc2)+' ₽</span></div>';
+        rows2+='</div>';
+      }
+
+      // Hourly breakdown
+      hwrk.forEach(function(h){
+        var amt=calcHourlyEntry(h);
+        if(!amt&&!h.qty)return;
+        var u=h.unit||'ч';
+        var qtyStr=fmt(+h.qty||0)+' '+u;
+        var hrsStr=u!=='шт'?'= '+fmt((+h.qty||0)*unitH(u))+'ч':'';
+        rows2+='<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">';
+        rows2+='<div style="display:flex;align-items:center;gap:4px">'+prefix;
+        rows2+='<span style="font-size:11px;color:var(--muted)">⏱ '+esc(h.desc||'Доп. работа')+'</span>';
+        if(indent)rows2+='<span style="font-size:10px;color:var(--muted);margin-left:4px">'+esc(ww.name.split(' ')[0])+'</span>';
+        rows2+='</div>';
+        rows2+='<div style="text-align:right"><span style="font-size:10px;color:var(--muted);margin-right:8px">'+qtyStr+' '+hrsStr+' × '+fmt(+h.rate||750)+'₽</span>';
+        rows2+='<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:600;color:var(--amber)">'+fmt(amt)+' ₽</span></div>';
+        rows2+='</div>';
+      });
+      return rows2;
+    }
+
+    r+=workerRows(w, false);
+    members.forEach(function(m){r+=workerRows(m, true);});
+
+    // Totals row
+    var totalAcc=grpAcc+grpH;
+    r+='<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;margin-top:2px">';
+    r+='<span style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Итого начислено</span>';
+    r+='<div style="display:flex;align-items:center;gap:16px">';
+    r+='<span style="font-size:11px;color:var(--muted)">позиции <b style="color:var(--text)">'+fmt(grpAcc)+' ₽</b></span>';
+    if(grpH>0) r+='<span style="font-size:11px;color:var(--muted)">доп. работы <b style="color:var(--amber)">'+fmt(grpH)+' ₽</b></span>';
+    r+='<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:'+(debt>0?'var(--red)':debt<0?'var(--amber)':'var(--green)')+'">выплачено '+fmt(grpPaid)+' ₽</span>';
+    r+='</div></div>';
+    r+='</div></div>';
+    rows.push(r);
+  });
+
+  el.innerHTML=rows.join('')||'<div class="empty-state"><div class="icon">👤</div><p>Нет полевых сотрудников</p></div>';
 }
 function kpi(cls,label,val,sub){return'<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div><div class="kpi-v">'+val+'</div><div class="kpi-s">'+sub+'</div></div>';}
 
