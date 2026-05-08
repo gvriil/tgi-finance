@@ -880,55 +880,65 @@ function openFldModal(id, asMember){
   _ER=w?JSON.parse(JSON.stringify(w.positions||[])):[{id:uid(),rate:40,count:0,label:'40₽/поз'}];
   _EM=w?[].concat(w.paysFor||[]):[];
   _EP=w?JSON.parse(JSON.stringify(wPays(w))):[];
+  // ── ВАЖНО: _EH должен быть инициализирован ДО любых draw/upd вызовов ──
+  _EH=w?JSON.parse(JSON.stringify(w.hourlyWork||[])):[];
   drawPos();
-  // Show/hide members block (only for group leaders that are NOT members themselves)
   var mbBlock=document.getElementById('members-block');
-  var mbList=document.getElementById('members-list');
-  // A worker is a leader if they have paysFor, OR we're editing standalone (not a member)
   if(!leader||asMember===false){
     mbBlock.style.display='block';
     drawMembersList(w?w.id:null);
   } else {
     mbBlock.style.display='none';
   }
-  // Show member alloc block only when opened as member
   var allocBlock=document.getElementById('member-alloc-block');
-  var allocContent=document.getElementById('member-alloc-content');
   if(leader&&asMember!==false){
     allocBlock.style.display='block';
     drawMemberAllocBlock(w,leader);
-    // When member, hide payment block (member's payments are usually 0 or direct)
     document.getElementById('pay-block-lbl').textContent='Прямые выплаты (вне группы)';
   } else {
     allocBlock.style.display='none';
-    document.getElementById('pay-block-lbl').textContent=_EM.length?'Выплаты (на всю группу)':'История выплат';
+    document.getElementById('pay-block-lbl').textContent=_EM.length?'Выплаты (получает лидер на всю группу)':'История выплат';
   }
   drawPays();updNPD(w);updAllocPreview();
-  _EH=w?JSON.parse(JSON.stringify(w.hourlyWork||[])):[];
   drawHourly();
   openModal('m-field');
 }
 
-// Member alloc block: shows how much this member gets from leader's payments
+// Member alloc block — показывает члену его долю с учётом почасовых
 function drawMemberAllocBlock(member,leader){
-  var ga=gAct(leader);
-  var memberAct=wAct(member);
-  var pct=ga>0?(memberAct/ga*100).toFixed(1):'0';
+  var posAct=wAct(member);
+  var hrlyAct=wHourlyTotal(member);
+  var fullAct2=posAct+hrlyAct;
+
+  // Group full accrual (positions + hourly всех участников)
+  var gFullAct2=wAct(leader)+wHourlyTotal(leader);
+  (leader.paysFor||[]).forEach(function(id){
+    var m=field.find(function(x){return x.id===id;});
+    if(m) gFullAct2+=wAct(m)+wHourlyTotal(m);
+  });
+  var gTotPaid=gPaid(leader); // выплачено лидеру (только позиции — реестры)
+  var pct=gFullAct2>0?(fullAct2/gFullAct2*100).toFixed(1):'0';
+
+  // Доля члена от выплаченного лидеру (пропорционально полному начислению)
+  var memberShare2=gFullAct2>0?(gTotPaid*fullAct2/gFullAct2):0;
+  var directPaid=wPaid(member);
+  var totalReceived=memberShare2+directPaid;
+  var debt=fullAct2-totalReceived;
+
   var html='<div style="margin-bottom:5px">Входит в группу <b>'+esc(leader.name)+'</b></div>';
-  html+='<div class="ibox-row"><span class="ik">Начислено за позиции</span><span class="iv">'+fmt(memberAct)+' ₽</span></div>';
-  html+='<div class="ibox-row"><span class="ik">Доля в группе ('+fmt(gAct(leader))+' ₽)</span><span class="iv">'+pct+'%</span></div>';
-  var gTotAct=gAct(leader);
-  var gTotPaid=gPaid(leader);
-  var gDebtTotal=gTotAct-gTotPaid;
-  html+='<div class="ibox-row" style="margin-top:6px"><span class="ik">Группа начислено</span><span class="iv">'+fmt(gTotAct)+' ₽</span></div>';
-  html+='<div class="ibox-row"><span class="ik">Группа выплачено</span><span class="iv">'+fmt(gTotPaid)+' ₽</span></div>';
-  html+='<div class="ibox-row tot"><span class="ik">Группа: остаток</span><span class="iv" style="color:'+(gDebtTotal>0?'var(--red)':gDebtTotal<0?'var(--amber)':'var(--green)')+';">'+fmt(gDebtTotal)+' ₽</span></div>';
-  var ownDirect=wPaid(member);
-  if(ownDirect){
-    html+='<div class="ibox-row" style="margin-top:4px"><span class="ik">+ Прямые выплаты</span><span class="iv">'+fmt(ownDirect)+' ₽</span></div>';
-  }
-  var ep=effPaid(member);var debt=memberAct-ep;
-  html+='<div class="ibox-row tot" style="margin-top:6px"><span class="ik">Остаток по сотруднику</span><span class="iv" style="color:'+(debt>0?'var(--red)':debt<0?'var(--amber)':'var(--green)')+';">'+(debt>0?fmt(debt)+' ₽':debt<0?'перепл. '+fmt(-debt)+' ₽':'✓ погашено')+'</span></div>';
+  html+='<div class="ibox-row"><span class="ik">Начислено за позиции</span><span class="iv mono">'+fmt(posAct)+' ₽</span></div>';
+  if(hrlyAct) html+='<div class="ibox-row"><span class="ik">⏱ Доп. работа</span><span class="iv mono" style="color:var(--amber)">'+fmt(hrlyAct)+' ₽</span></div>';
+  html+='<div class="ibox-row"><span class="ik">= Итого начислено</span><span class="iv mono" style="font-weight:700">'+fmt(fullAct2)+' ₽</span></div>';
+  html+='<div class="ibox-row"><span class="ik">Доля в группе ('+fmt(gFullAct2)+' ₽)</span><span class="iv">'+pct+'%</span></div>';
+  html+='<div style="height:6px"></div>';
+  html+='<div class="ibox-row"><span class="ik">Группа начислено</span><span class="iv mono">'+fmt(gFullAct2)+' ₽</span></div>';
+  html+='<div class="ibox-row"><span class="ik">Группа получено лидером</span><span class="iv mono">'+fmt(gTotPaid)+' ₽</span></div>';
+  var gDebt=gFullAct2-gTotPaid;
+  html+='<div class="ibox-row tot"><span class="ik">Группа: остаток</span><span class="iv mono" style="color:'+(Math.abs(gDebt)<1?'var(--green)':gDebt>0?'var(--red)':'var(--amber)')+';">'+(Math.abs(gDebt)<1?'✓ 0':fmt(Math.round(gDebt)))+' ₽</span></div>';
+  html+='<div style="height:6px"></div>';
+  html+='<div class="ibox-row"><span class="ik">Твоя доля получена</span><span class="iv mono" style="color:var(--green)">'+fmt(Math.round(memberShare2))+' ₽</span></div>';
+  if(directPaid) html+='<div class="ibox-row"><span class="ik">+ Прямые выплаты</span><span class="iv mono">'+fmt(directPaid)+' ₽</span></div>';
+  html+='<div class="ibox-row tot"><span class="ik">Остаток по сотруднику</span><span class="iv mono" style="color:'+(Math.abs(debt)<1?'var(--green)':debt>0?'var(--red)':'var(--amber)')+';">'+(Math.abs(debt)<1?'✓ погашено':debt>0?fmt(Math.round(debt))+' ₽':'переплата '+fmt(Math.round(-debt))+' ₽')+'</span></div>';
   document.getElementById('member-alloc-content').innerHTML=html;
 }
 
@@ -1089,32 +1099,48 @@ function updPayTotal(){
   var t=_EP.filter(function(p){return p.type==='transfer';}).reduce(function(s,p){return s+(+p.amount||0);},0);
   var s=_EP.filter(function(p){return p.type==='self';}).reduce(function(s,p){return s+(+p.amount||0);},0);
   var tot=c+t+s;
-  // Accrual: positions + hourly
+
+  // Is this worker a member (opened via editMember)?
+  var isMemberMode=document.getElementById('mf-member-mode')&&document.getElementById('mf-member-mode').value==='1';
+
+  // Own accrual: positions + hourly (always personal)
   var posAct=_ER.reduce(function(a,p){return a+(+p.count||0)*(+p.rate||0);},0);
   var hrlyAct=_EH.reduce(function(a,h){return a+calcHourlyEntry(h);},0);
-  var act=posAct+hrlyAct;
-  // Group total if leader
-  var gact=act;
-  _EM.forEach(function(id){
-    var m=field.find(function(x){return x.id===id;});
-    if(m) gact+=wAct(m)+wHourlyTotal(m);
-  });
-  var debt=gact-tot;
-  var isGrp=_EM.length>0;
-  var html='';
-  html+='<div class="ibox-row"><span class="ik">📋 Позиции'+(isGrp?' (группа)':'')+'</span><span class="iv mono">'+fmt(isGrp?gact-(_EM.reduce(function(s,id){var m=field.find(function(x){return x.id===id;});return s+(m?wHourlyTotal(m):0);},0)+hrlyAct):posAct)+' ₽</span></div>';
-  if(hrlyAct||(_EM.length&&_EM.some(function(id){var m=field.find(function(x){return x.id===id;});return m&&wHourlyTotal(m)>0;}))){
-    var grpHrly=hrlyAct+_EM.reduce(function(s,id){var m=field.find(function(x){return x.id===id;});return s+(m?wHourlyTotal(m):0);},0);
-    html+='<div class="ibox-row"><span class="ik">⏱ Доп. работа</span><span class="iv mono" style="color:var(--amber)">'+fmt(grpHrly)+' ₽</span></div>';
+  var personalAct=posAct+hrlyAct;
+
+  // Group accrual (only when leader, not member)
+  var isGrp=_EM.length>0&&!isMemberMode;
+  var gact=personalAct;
+  if(isGrp){
+    _EM.forEach(function(id){
+      var m=field.find(function(x){return x.id===id;});
+      if(m) gact+=wAct(m)+wHourlyTotal(m);
+    });
   }
+
+  var debt=gact-tot;
+  var html='';
+
+  // Positions line
+  var posLabel=isGrp?'📋 Позиции (группа)':'📋 Позиции';
+  html+='<div class="ibox-row"><span class="ik">'+posLabel+'</span><span class="iv mono">'+fmt(isGrp?gact-(hrlyAct+(_EM.reduce(function(s2,id){var m=field.find(function(x){return x.id===id;});return s2+(m?wHourlyTotal(m):0);},0))):posAct)+' ₽</span></div>';
+
+  // Hourly line
+  if(isGrp){
+    var grpHrly=hrlyAct+_EM.reduce(function(s2,id){var m=field.find(function(x){return x.id===id;});return s2+(m?wHourlyTotal(m):0);},0);
+    if(grpHrly) html+='<div class="ibox-row"><span class="ik">⏱ Доп. работа (группа)</span><span class="iv mono" style="color:var(--amber)">'+fmt(grpHrly)+' ₽</span></div>';
+  } else if(hrlyAct){
+    html+='<div class="ibox-row"><span class="ik">⏱ Доп. работа</span><span class="iv mono" style="color:var(--amber)">'+fmt(hrlyAct)+' ₽</span></div>';
+  }
+
   html+='<div class="ibox-row" style="border-top:1px solid var(--border);padding-top:5px;margin-top:3px"><span class="ik" style="font-weight:600">= Итого к выплате'+(isGrp?' (группа)':'')+'</span><span class="iv mono" style="font-weight:700">'+fmt(gact)+' ₽</span></div>';
   html+='<div style="height:8px"></div>';
-  if(c)html+='<div class="ibox-row"><span class="ik">💵 Нал</span><span class="iv" style="color:var(--green)">'+fmt(c)+' ₽</span></div>';
-  if(t)html+='<div class="ibox-row"><span class="ik">💳 Перевод</span><span class="iv" style="color:var(--teal)">'+fmt(t)+' ₽</span></div>';
-  if(s)html+='<div class="ibox-row"><span class="ik">🟣 Самозанятым</span><span class="iv" style="color:var(--purple)">'+fmt(s)+' ₽</span></div>';
+  if(c) html+='<div class="ibox-row"><span class="ik">💵 Нал</span><span class="iv" style="color:var(--green)">'+fmt(c)+' ₽</span></div>';
+  if(t) html+='<div class="ibox-row"><span class="ik">💳 Перевод</span><span class="iv" style="color:var(--teal)">'+fmt(t)+' ₽</span></div>';
+  if(s) html+='<div class="ibox-row"><span class="ik">🟣 Самозанятым</span><span class="iv" style="color:var(--purple)">'+fmt(s)+' ₽</span></div>';
   html+='<div class="ibox-row tot"><span class="ik">Итого выплачено</span><span class="iv">'+fmt(tot)+' ₽</span></div>';
-  html+='<div class="ibox-row"><span class="ik">Остаток</span><span class="iv" style="color:'+(debt>1?'var(--red)':debt<-1?'var(--amber)':'var(--green)')+';">'+(Math.abs(debt)<1?'✓ закрыто':debt>0?fmt(Math.round(debt))+' ₽':'переплата '+fmt(Math.round(-debt))+' ₽')+'</span></div>';
-  // Progress bar
+  html+='<div class="ibox-row"><span class="ik">Остаток</span><span class="iv" style="color:'+(Math.abs(debt)<1?'var(--green)':debt>0?'var(--red)':'var(--amber)')+';">'+(Math.abs(debt)<1?'✓ закрыто':debt>0?fmt(Math.round(debt))+' ₽':'переплата '+fmt(Math.round(-debt))+' ₽')+'</span></div>';
+
   var pct=gact>0?Math.min(100,Math.round(tot/gact*100)):0;
   html+='<div class="progress-wrap"><div class="progress-bar" style="width:'+pct+'%;background:'+(pct>=100?'var(--green)':pct>50?'var(--accent)':'var(--amber)')+'"></div></div>';
   html+='<div style="text-align:right;font-size:9px;color:var(--muted);margin-top:2px">'+pct+'% оплачено</div>';
