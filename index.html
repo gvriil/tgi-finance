@@ -472,9 +472,22 @@ select.sty:focus{border-color:var(--accent)}
 
 <!-- ══════════════ MODAL: ПОЛЕВОЙ ══════════════ -->
 <div class="ovl" id="m-field"><div class="modal">
-  <div class="mh"><h3 id="mf-tit">Худоенков Алексей Андреевич</h3><button class="bi del" onclick="closeModal('m-field')">✕</button></div>
   <input type="hidden" id="mf-id" value="_yv3y929">
-  <input type="hidden" id="mf-member-mode" value=""> <!-- "member" if opened as member -->
+  <input type="hidden" id="mf-member-mode" value="">
+  <!-- Breadcrumb nav -->
+  <div id="mf-nav" style="display:none;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:0;background:var(--subtle);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px">
+      <button onclick="navBack()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:12px;padding:0 6px 0 0;font-family:inherit;display:flex;align-items:center;gap:3px;font-weight:600">← Назад</button>
+      <span style="color:var(--border);margin-right:6px">│</span>
+      <span id="mf-crumb" style="color:var(--muted)"></span>
+    </div>
+  </div>
+  <div class="mh">
+    <h3 id="mf-tit">Худоенков Алексей Андреевич</h3>
+    <div style="display:flex;gap:4px">
+      <button class="bi del" onclick="closeModalAndClear()" title="Закрыть">✕</button>
+    </div>
+  </div>
   <div class="m2">
     <div><label class="lbl">ФИО</label><input class="inp" type="text" id="mf-name" list="dl-names" data-ddg-inputtype="unknown"><datalist id="dl-names"><option value="Быков Михаил Юрьевич"></option><option value="Бурмистров Артём Витальевич"></option><option value="Ференец Василий Андреевич"></option><option value="Самарцев Евгений Викторович"></option><option value="Худоенков Алексей Андреевич"></option><option value="Александрова Татьяна"></option><option value="Гусева Елена"></option><option value="Садчикова Светлана Юрьевна"></option><option value="Кузнецов Михаил Денисович"></option><option value="Гусева Наталия Владимировна"></option><option value="Козловская Ирина"></option><option value="Асанова Элина Наримановна"></option><option value="Дергузов Дмитрий Александрович"></option><option value="Гайгер Анна Сергеевна"></option><option value="Лукин Максим Евгеньевич"></option><option value="Кашаров Филип"></option><option value="Аржаный Павел Георгиевич"></option><option value="Волов Денис Александрович"></option><option value="Маневич Григорий Михайлович"></option></datalist></div>
     <div><label class="lbl">Email</label><input class="inp" type="text" id="mf-email" list="dl-emails" data-ddg-inputtype="identities.emailAddress"><datalist id="dl-emails"><option value="micknick@yandex.ru"></option><option value="artemdj@gmail.com"></option><option value="eight8vision@gmail.com"></option><option value="samartsevev@yandex.ru"></option><option value="djduhov@mail.ru"></option><option value="talexandrova8@gmail.com"></option><option value="lena_lopert@mail.ru"></option><option value="tysatt@mail.ru"></option><option value="kuzneczov.mixail.00@bk.ru"></option><option value="nataliya-guseva@yandex.ru"></option><option value="iriko1105@gmail.com"></option><option value="ranavaloona1@gmail.com"></option><option value="gans1971@mail.ru"></option><option value="annagaiger@icloud.com"></option><option value="maximlukim@gmail.com"></option><option value="philippkasharov@gmail.com"></option><option value="fikusone@gmail.com"></option><option value="ant80@bk.ru"></option><option value="gregman@yandex.ru"></option></datalist></div>
@@ -531,7 +544,7 @@ select.sty:focus{border-color:var(--accent)}
     <div id="hourly-total" style="display:none;font-size:11px;padding:5px 8px;background:var(--ibg);border-radius:5px;margin-top:4px;border:1px solid var(--border)"></div>
   </div>
   <div style="margin-bottom:10px;margin-top:4px"><label class="lbl">Примечание</label><input class="inp" type="text" id="mf-note" data-ddg-inputtype="unknown"></div>
-  <div class="mf"><button class="btn bg" onclick="closeModal('m-field')">Отмена</button><button class="btn bp" onclick="saveFld()">Сохранить</button></div>
+  <div class="mf"><button class="btn bg" onclick="closeModalAndClear()">Отмена</button><button class="btn bp" onclick="saveFld()">Сохранить</button></div>
 </div></div>
 
 <!-- ══════════════ MODAL: РАСХОД ══════════════ -->
@@ -649,49 +662,115 @@ function gReceived(leader){
 // Алиас для обратной совместимости
 function gPaid(leader){return gReceived(leader);}
 
-// Доля конкретного участника от поступлений лидера
-// member = любой (лидер или член), leader = лидер группы
+// ═══════════════════════════════════════════════════
+// КЛЮЧЕВАЯ ЛОГИКА РАСЧЁТА ДОЛИ ЧЛЕНА ГРУППЫ
+//
+// Каждый платёж лидера может быть:
+//   а) Без получателя → делится пропорционально начислению всех
+//   б) С получателем(и) → идёт только указанным участникам
+//      (пропорционально их начислению внутри указанной подгруппы)
+// ═══════════════════════════════════════════════════
+
+// Вернуть список ID получателей платежа (пустой = все)
+function payRecipients(p){
+  if(p.recipients && p.recipients.length) return p.recipients;
+  if(p.recipient) return [p.recipient];
+  return []; // пустой = все участники
+}
+
+// Полное начисление участника (позиции + доп.работы)
+function fullActW(w){ return wAct(w) + wHourlyTotal(w); }
+
+// Полное начисление группы
+function gFullActLeader(leader){
+  var a = fullActW(leader);
+  (leader.paysFor||[]).forEach(function(id){
+    var m=field.find(function(x){return x.id===id;});
+    if(m) a += fullActW(m);
+  });
+  return a;
+}
+
+// Сколько получил конкретный участник (member) из платежей лидера
+function memberShareFromPayments(member, leader){
+  var allPays = wPays(leader);
+  var total = 0;
+
+  allPays.forEach(function(p){
+    var amt = +p.amount || 0;
+    if(!amt) return;
+    var recips = payRecipients(p);
+
+    if(recips.length === 0){
+      // Без указания — делим пропорционально fullAct всех участников группы
+      var ga = gFullActLeader(leader);
+      if(ga <= 0) return;
+      var memberAct = (member.id === leader.id) ? fullActW(leader) : fullActW(member);
+      total += amt * (memberAct / ga);
+    } else {
+      // С указанием получателей
+      var myId = member.id === leader.id ? '__self__' : member.id;
+      if(recips.indexOf(myId) < 0 && recips.indexOf(member.id) < 0) return;
+
+      // Считаем суммарное начисление только указанных получателей
+      var subAct = 0;
+      recips.forEach(function(rid){
+        if(rid === '__self__') subAct += fullActW(leader);
+        else {
+          var m2 = field.find(function(x){return x.id===rid;});
+          if(m2) subAct += fullActW(m2);
+        }
+      });
+      if(subAct <= 0) {
+        // Если не можем посчитать — делим поровну
+        total += amt / recips.length;
+        return;
+      }
+      var myAct = (myId === '__self__') ? fullActW(leader) : fullActW(member);
+      total += amt * (myAct / subAct);
+    }
+  });
+
+  return total;
+}
+
+// Итого получил участник: из платежей лидера + прямые выплаты ему
 function memberShare(member, leader){
-  var ga=gAct(leader);
-  if(ga<=0) return wPaid(member);
-  var leaderReceived=wPaid(leader); // поступило лидеру (на всю группу)
-  var memberDirect=wPaid(member);   // прямые выплаты этому участнику
-  if(member.id===leader.id){
-    // Лидер: его доля от поступлений пропорционально его начислению
-    return leaderReceived*(wAct(leader)/ga);
-  }
-  // Член: его доля от поступлений лидеру + прямые выплаты ему
-  return leaderReceived*(wAct(member)/ga) + memberDirect;
+  var fromLeader = memberShareFromPayments(member, leader);
+  var direct = member.id === leader.id ? 0 : wPaid(member);
+  return fromLeader + direct;
 }
 
 // Долг члена с учётом его доли от лидера
 function memberDebt(member, leader){
-  return wAct(member) - memberShare(member, leader);
+  return fullActW(member) - memberShare(member, leader);
+}
+
+// memberFullShare — алиас (используется в renderField)
+function memberFullShare(member, leader){
+  return memberShare(member, leader);
 }
 
 // Долг группы целиком
 function gDebt(leader){
-  return gAct(leader) - gReceived(leader);
+  return gFullActLeader(leader) - gReceived(leader);
 }
 
-// Эффективно выплачено любому сотруднику
 function effPaid(w){
   var leader=getLeader(w);
-  if(!leader)return wPaid(w);
+  if(!leader) return wPaid(w);
   return memberShare(w, leader);
 }
 
-// Эффективный долг
-function effDebt(w){return wAct(w)-effPaid(w);}
+function effDebt(w){ return fullActW(w) - effPaid(w); }
 
-// Статус сотрудника
 function wStatus(w){
-  var act=wAct(w);
+  var act=fullActW(w);
   var ep=effPaid(w);
-  if(act===0)return'none';
-  if(ep>=act-1)return'ok'; // погрешность 1₽
-  if(ep>0)return'part';
-  return'debt';
+  if(act===0) return 'none';
+  if(Math.abs(ep-act)<1) return 'ok';
+  if(ep>0) return 'part';
+  return 'debt';
 }
 
 // Алиас (legacy)
@@ -904,42 +983,84 @@ function openFldModal(id, asMember){
   openModal('m-field');
 }
 
-// Member alloc block — показывает члену его долю с учётом почасовых
-function drawMemberAllocBlock(member,leader){
-  var posAct=wAct(member);
-  var hrlyAct=wHourlyTotal(member);
-  var fullAct2=posAct+hrlyAct;
+// Member alloc block — показывает члену его долю с разбивкой по платежам
+function drawMemberAllocBlock(member, leader){
+  var posAct = wAct(member);
+  var hrlyAct = wHourlyTotal(member);
+  var myFullAct = posAct + hrlyAct;
+  var gFull = gFullActLeader(leader);
+  var pct = gFull > 0 ? (myFullAct / gFull * 100).toFixed(1) : '0';
 
-  // Group full accrual (positions + hourly всех участников)
-  var gFullAct2=wAct(leader)+wHourlyTotal(leader);
-  (leader.paysFor||[]).forEach(function(id){
-    var m=field.find(function(x){return x.id===id;});
-    if(m) gFullAct2+=wAct(m)+wHourlyTotal(m);
+  // Per-payment breakdown
+  var pays = wPays(leader);
+  var myTotal = 0;
+  var payRows = '';
+
+  pays.forEach(function(p){
+    var amt = +p.amount || 0;
+    if(!amt) return;
+    var recips = payRecipients(p);
+    var myId = member.id;
+
+    var included = false;
+    var myShare = 0;
+
+    if(recips.length === 0){
+      // Proportional
+      included = true;
+      myShare = gFull > 0 ? amt * (myFullAct / gFull) : 0;
+    } else {
+      included = recips.indexOf(myId) >= 0;
+      if(included){
+        var subAct = 0;
+        recips.forEach(function(rid){
+          if(rid === '__self__') subAct += fullActW(leader);
+          else { var m2=field.find(function(x){return x.id===rid;}); if(m2) subAct+=fullActW(m2); }
+        });
+        myShare = subAct > 0 ? amt * (myFullAct / subAct) : amt / recips.length;
+      }
+    }
+
+    if(!included) return;
+    myTotal += myShare;
+
+    var typeIcon = {'cash':'💵','transfer':'💳','self':'🟣'}[p.type]||'💰';
+    var recipLabel = recips.length === 0 ? '<span style="font-size:9px;color:var(--muted)">все</span>' :
+      '<span style="font-size:9px;background:var(--purple-bg);color:var(--purple);border-radius:3px;padding:1px 4px">целевой</span>';
+
+    payRows += '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px">';
+    payRows += '<span style="color:var(--muted);font-size:10px;min-width:78px;font-family:monospace">'+esc(p.date||'')+'</span>';
+    payRows += typeIcon + recipLabel;
+    payRows += '<span style="color:var(--muted);flex:1;font-size:10px">'+esc(p.note||'')+'</span>';
+    payRows += '<span style="color:var(--muted);font-size:10px;font-family:monospace">'+fmt(amt)+'₽ × '+pct+'%</span>';
+    payRows += '<span style="font-family:monospace;font-weight:600;color:var(--green);margin-left:6px">→ '+fmt(Math.round(myShare))+'₽</span>';
+    payRows += '</div>';
   });
-  var gTotPaid=gPaid(leader); // выплачено лидеру (только позиции — реестры)
-  var pct=gFullAct2>0?(fullAct2/gFullAct2*100).toFixed(1):'0';
 
-  // Доля члена от выплаченного лидеру (пропорционально полному начислению)
-  var memberShare2=gFullAct2>0?(gTotPaid*fullAct2/gFullAct2):0;
-  var directPaid=wPaid(member);
-  var totalReceived=memberShare2+directPaid;
-  var debt=fullAct2-totalReceived;
+  var directPaid = wPaid(member);
+  var totalReceived = myTotal + directPaid;
+  var debt = myFullAct - totalReceived;
 
-  var html='<div style="margin-bottom:5px">Входит в группу <b>'+esc(leader.name)+'</b></div>';
-  html+='<div class="ibox-row"><span class="ik">Начислено за позиции</span><span class="iv mono">'+fmt(posAct)+' ₽</span></div>';
-  if(hrlyAct) html+='<div class="ibox-row"><span class="ik">⏱ Доп. работа</span><span class="iv mono" style="color:var(--amber)">'+fmt(hrlyAct)+' ₽</span></div>';
-  html+='<div class="ibox-row"><span class="ik">= Итого начислено</span><span class="iv mono" style="font-weight:700">'+fmt(fullAct2)+' ₽</span></div>';
-  html+='<div class="ibox-row"><span class="ik">Доля в группе ('+fmt(gFullAct2)+' ₽)</span><span class="iv">'+pct+'%</span></div>';
-  html+='<div style="height:6px"></div>';
-  html+='<div class="ibox-row"><span class="ik">Группа начислено</span><span class="iv mono">'+fmt(gFullAct2)+' ₽</span></div>';
-  html+='<div class="ibox-row"><span class="ik">Группа получено лидером</span><span class="iv mono">'+fmt(gTotPaid)+' ₽</span></div>';
-  var gDebt=gFullAct2-gTotPaid;
-  html+='<div class="ibox-row tot"><span class="ik">Группа: остаток</span><span class="iv mono" style="color:'+(Math.abs(gDebt)<1?'var(--green)':gDebt>0?'var(--red)':'var(--amber)')+';">'+(Math.abs(gDebt)<1?'✓ 0':fmt(Math.round(gDebt)))+' ₽</span></div>';
-  html+='<div style="height:6px"></div>';
-  html+='<div class="ibox-row"><span class="ik">Твоя доля получена</span><span class="iv mono" style="color:var(--green)">'+fmt(Math.round(memberShare2))+' ₽</span></div>';
-  if(directPaid) html+='<div class="ibox-row"><span class="ik">+ Прямые выплаты</span><span class="iv mono">'+fmt(directPaid)+' ₽</span></div>';
-  html+='<div class="ibox-row tot"><span class="ik">Остаток по сотруднику</span><span class="iv mono" style="color:'+(Math.abs(debt)<1?'var(--green)':debt>0?'var(--red)':'var(--amber)')+';">'+(Math.abs(debt)<1?'✓ погашено':debt>0?fmt(Math.round(debt))+' ₽':'переплата '+fmt(Math.round(-debt))+' ₽')+'</span></div>';
-  document.getElementById('member-alloc-content').innerHTML=html;
+  var html = '<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Входит в группу <b style="color:var(--text)">'+esc(leader.name)+'</b></div>';
+
+  // Accrual summary
+  html += '<div class="ibox-row"><span class="ik">📋 Позиции</span><span class="iv mono">'+fmt(posAct)+' ₽</span></div>';
+  if(hrlyAct) html += '<div class="ibox-row"><span class="ik">⏱ Доп. работа</span><span class="iv mono" style="color:var(--amber)">'+fmt(hrlyAct)+' ₽</span></div>';
+  html += '<div class="ibox-row"><span class="ik" style="font-weight:600">= Итого начислено</span><span class="iv mono" style="font-weight:700">'+fmt(myFullAct)+' ₽</span></div>';
+  html += '<div class="ibox-row"><span class="ik">Доля в группе</span><span class="iv">'+pct+'% от '+fmt(gFull)+' ₽</span></div>';
+
+  // Payment breakdown
+  if(payRows){
+    html += '<div style="margin:8px 0 4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Разбивка по платежам лидера</div>';
+    html += payRows;
+  }
+
+  html += '<div style="height:6px"></div>';
+  if(directPaid) html += '<div class="ibox-row"><span class="ik">+ Прямые выплаты</span><span class="iv mono">'+fmt(directPaid)+' ₽</span></div>';
+  html += '<div class="ibox-row tot"><span class="ik">Итого получено</span><span class="iv mono" style="color:var(--green)">'+fmt(Math.round(totalReceived))+' ₽</span></div>';
+  html += '<div class="ibox-row tot"><span class="ik">Остаток</span><span class="iv mono" style="color:'+(Math.abs(debt)<1?'var(--green)':debt>0?'var(--red)':'var(--amber)')+';">'+(Math.abs(debt)<1?'✓ погашено':debt>0?fmt(Math.round(debt))+' ₽':'переплата '+fmt(Math.round(-debt))+' ₽')+'</span></div>';
+
+  document.getElementById('member-alloc-content').innerHTML = html;
 }
 
 // alloc preview for leader (how each payment splits across members)
@@ -1028,14 +1149,125 @@ function addMember(){
   _EM.push(id);drawMembersList(document.getElementById('mf-id').value);sel.value='';updPayTotal();
 }
 function remMember(id){_EM=_EM.filter(function(x){return x!==id;});drawMembersList(document.getElementById('mf-id').value);updPayTotal();}
-function editMember(id){
-  // Save current leader state first, then open member modal
-  var leaderId=document.getElementById('mf-id').value;
-  var lastDate=_EP.length?_EP[_EP.length-1].date:'';
-  var leaderObj={id:leaderId||uid(),name:document.getElementById('mf-name').value,email:document.getElementById('mf-email').value,positions:JSON.parse(JSON.stringify(_ER)),paysFor:[].concat(_EM),payments:JSON.parse(JSON.stringify(_EP)),hourlyWork:JSON.parse(JSON.stringify(_EH)),date:lastDate,note:document.getElementById('mf-note').value};
-  if(leaderId){var li=field.findIndex(function(x){return x.id===leaderId;});if(li>=0)field[li]=leaderObj;}
+// ─── MODAL NAVIGATION STACK ───
+var _navStack = []; // [{id, asMember, label}]
+
+function openFldModalNav(id, asMember, leaderName){
+  // Push current state if there's something open
+  var curId = document.getElementById('mf-id').value;
+  if(curId && document.getElementById('m-field').classList.contains('open')){
+    // Save current before navigating
+    var curName = document.getElementById('mf-tit').textContent;
+    _navStack.push({id: curId, asMember: document.getElementById('mf-member-mode').value==='1', label: curName});
+  }
+  _openFldModalInternal(id, asMember, leaderName);
+}
+
+function navBack(){
+  if(!_navStack.length) return closeModalAndClear();
+  var prev = _navStack.pop();
+  _openFldModalInternal(prev.id, prev.asMember, null);
+}
+
+function closeModalAndClear(){
+  _navStack = [];
   closeModal('m-field');
-  openFldModal(id,true);
+}
+
+function _openFldModalInternal(id, asMember, fromName){
+  openFldModal(id, asMember);
+  // Update breadcrumb
+  var navEl = document.getElementById('mf-nav');
+  var crumb = document.getElementById('mf-crumb');
+  if(_navStack.length > 0){
+    navEl.style.display = 'block';
+    // Build breadcrumb path: Home > Leader > Member
+    var path = _navStack.map(function(s){ return '<span>'+esc(s.label)+'</span>'; }).join(' <span style="color:var(--border)">›</span> ');
+    crumb.innerHTML = path + ' <span style="color:var(--border)">›</span> <b style="color:var(--text)">'+esc(document.getElementById('mf-tit').textContent)+'</b>';
+  } else {
+    navEl.style.display = 'none';
+  }
+}
+
+// Close button closes and clears stack
+function editMember(id){
+  var leaderId = document.getElementById('mf-id').value;
+  var leaderName = document.getElementById('mf-tit').textContent;
+  var lastDate = _EP.length?_EP[_EP.length-1].date:'';
+  var leaderObj = {id:leaderId||uid(),name:document.getElementById('mf-name').value,email:document.getElementById('mf-email').value,positions:JSON.parse(JSON.stringify(_ER)),paysFor:[].concat(_EM),payments:JSON.parse(JSON.stringify(_EP)),hourlyWork:JSON.parse(JSON.stringify(_EH)),date:lastDate,note:document.getElementById('mf-note').value};
+  if(leaderId){var li=field.findIndex(function(x){return x.id===leaderId;});if(li>=0)field[li]=leaderObj;}
+  // Push leader to nav stack
+  _navStack.push({id:leaderId, asMember:false, label:leaderName});
+  _openFldModalInternal(id, true, leaderName);
+}
+
+// ─── RECIPIENT CHECKBOX PICKER ───
+function toggleRecipPicker(i, btn){
+  // Close all other pickers
+  document.querySelectorAll('[id^="recip-pick-"]').forEach(function(el){
+    if(el.id !== 'recip-pick-'+i) el.style.display='none';
+  });
+  var pick = document.getElementById('recip-pick-'+i);
+  if(!pick) return;
+  pick.style.display = pick.style.display==='none' ? 'block' : 'none';
+  // Close on outside click
+  if(pick.style.display==='block'){
+    setTimeout(function(){
+      document.addEventListener('click', function handler(e){
+        if(!pick.contains(e.target) && e.target!==btn){
+          pick.style.display='none';
+          document.removeEventListener('click', handler);
+        }
+      });
+    }, 50);
+  }
+}
+
+function toggleRecip(i, memberId, checked){
+  if(!_EP[i].recipients) _EP[i].recipients = _EP[i].recipient ? [_EP[i].recipient] : [];
+  if(memberId==='__self__'){
+    if(checked){ if(_EP[i].recipients.indexOf('__self__')<0) _EP[i].recipients.push('__self__'); }
+    else { _EP[i].recipients = _EP[i].recipients.filter(function(x){return x!=='__self__';}); }
+  } else {
+    if(checked){ if(_EP[i].recipients.indexOf(memberId)<0) _EP[i].recipients.push(memberId); }
+    else { _EP[i].recipients = _EP[i].recipients.filter(function(x){return x!==memberId;}); }
+  }
+  // Update "all" checkbox state
+  var allChk = document.getElementById('recip-all-'+i);
+  var allMembers = [document.getElementById('mf-id').value].concat(_EM);
+  if(allChk) allChk.checked = _EP[i].recipients.length===0||_EP[i].recipients.length===allMembers.length+1;
+  // Update button label
+  _updateRecipBtn(i);
+  updPayTotal(); updAllocPreview();
+}
+
+function setRecipAll(i, checked){
+  if(checked){
+    _EP[i].recipients = []; // empty = all
+  } else {
+    _EP[i].recipients = [];
+  }
+  // Uncheck/recheck all individual boxes
+  var pick = document.getElementById('recip-pick-'+i);
+  if(pick) pick.querySelectorAll('input[type=checkbox]').forEach(function(cb){ cb.checked = checked; });
+  _updateRecipBtn(i);
+  updPayTotal(); updAllocPreview();
+}
+
+function _updateRecipBtn(i){
+  var btn = document.getElementById('recip-btn-'+i);
+  if(!btn) return;
+  var recips = _EP[i].recipients||[];
+  if(recips.length===0){
+    btn.textContent = '→ все';
+    return;
+  }
+  var allMembers = [{id:'__self__',name:(document.getElementById('mf-name').value||'Лидер').split(' ')[0]}];
+  _EM.forEach(function(id){var m=field.find(function(x){return x.id===id;});if(m)allMembers.push({id:m.id,name:m.name.split(' ')[0]});});
+  var label = recips.map(function(rid){
+    var mm=allMembers.find(function(x){return x.id===rid;});return mm?mm.name:'?';
+  }).join(', ');
+  btn.textContent = '→ '+label;
 }
 
 // --- Выплаты ---
@@ -1058,18 +1290,36 @@ function drawPays(){
       return'<option value="'+k+'"'+(p.type===k?' selected':'')+'>'+PT_TYPES[k]+'</option>';
     }).join('');
 
-    // Recipient: only show for cash/transfer (not self = самозанятый)
     var recipSel='';
     if(hasGroup){
-      // Build opts with current selection
-      var rOpts='<option value=""'+((!p.recipient)?' selected':'')+'>— всей группе —</option>';
-      _EM.forEach(function(id){
-        var m=field.find(function(x){return x.id===id;});
-        if(m) rOpts+='<option value="'+id+'"'+(p.recipient===id?' selected':'')+'>↳ '+esc(m.name.split(' ')[0])+'</option>';
-      });
-      recipSel='<select class="inp" style="font-size:11px" title="Кому из группы" onchange="_EP['+i+'].recipient=this.value;updPayTotal();updAllocPreview()">'+rOpts+'</select>';
+      // Multi-checkbox: store as array of ids, empty = all
+      var recips=Array.isArray(p.recipients)?p.recipients:(p.recipient?[p.recipient]:[]);
+      var allMembers=[{id:'__self__',name:document.getElementById('mf-name').value||'Лидер'}];
+      _EM.forEach(function(id){var m=field.find(function(x){return x.id===id;});if(m)allMembers.push({id:m.id,name:m.name.split(' ')[0]});});
+      var label=recips.length===0?'все':recips.map(function(rid){var mm=allMembers.find(function(x){return x.id===rid;});return mm?mm.name.split(' ')[0]:'?';}).join(', ');
+      recipSel='<div style="position:relative;display:inline-block;width:100%">'+
+        '<button type="button" class="inp" style="font-size:11px;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" '+
+          'onclick="toggleRecipPicker('+i+',this)" id="recip-btn-'+i+'">'+
+          '→ '+esc(label)+
+        '</button>'+
+        '<div id="recip-pick-'+i+'" style="display:none;position:absolute;z-index:99;top:100%;left:0;min-width:180px;background:var(--panel);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shad-modal);padding:6px 0;margin-top:2px">'+
+          allMembers.map(function(mm){
+            var chk=recips.length===0||recips.indexOf(mm.id)>=0;
+            return'<label style="display:flex;align-items:center;gap:8px;padding:5px 12px;cursor:pointer;font-size:12px">'+
+              '<input type="checkbox" data-pi="'+i+'" data-mid="'+mm.id+'" '+(chk?'checked':'')+' '+
+                'onchange="toggleRecip(+this.dataset.pi,this.dataset.mid,this.checked)" '+
+                'style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer">'+
+              esc(mm.name)+'</label>';
+          }).join('')+
+          '<div style="border-top:1px solid var(--border);margin:4px 0;padding:4px 12px">'+
+            '<label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;color:var(--muted)">'+
+              '<input type="checkbox" id="recip-all-'+i+'" '+(recips.length===0?'checked':'')+' '+
+                'onchange="setRecipAll('+i+',this.checked)" style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer">'+
+              'Все участники</label>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
     } else {
-      // Solo: free text note for recipient (e.g. last 4 digits of card)
       recipSel='<input class="inp" type="text" placeholder="Получатель / карта" style="font-size:11px" value="'+esc(p.recipient||'')+'" onchange="_EP['+i+'].recipient=this.value" title="Имя получателя или последние цифры карты">';
     }
 
@@ -1152,7 +1402,14 @@ function saveFld(){
   var lastDate=_EP.length?_EP[_EP.length-1].date:'';
   var obj={id:id||uid(),name:document.getElementById('mf-name').value,email:document.getElementById('mf-email').value,positions:JSON.parse(JSON.stringify(_ER)),paysFor:[].concat(_EM),payments:JSON.parse(JSON.stringify(_EP)),hourlyWork:JSON.parse(JSON.stringify(_EH)),date:lastDate,note:document.getElementById('mf-note').value};
   if(id){var i=field.findIndex(function(x){return x.id===id;});if(i>=0)field[i]=obj;}else field.push(obj);
-  closeModal('m-field');renderField();updateDash();autoSave();
+  renderField();updateDash();autoSave();
+  // Navigate back if in stack, otherwise close
+  if(_navStack.length>0){
+    var prev=_navStack.pop();
+    _openFldModalInternal(prev.id, prev.asMember, null);
+  } else {
+    closeModalAndClear();
+  }
 }
 function delFld(id){
   if(!confirm('Удалить сотрудника?'))return;
@@ -1540,10 +1797,17 @@ function renderField(){
         dh+='<div style="padding:8px 12px;border-top:1px solid var(--border);background:var(--subtle)">';
         dh+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">История выплат лидеру</div>';
         wPays(w).forEach(function(p){
-          var recip='';
-          if(p.recipient){
-            var rm=field.find(function(x){return x.id===p.recipient;});
-            if(rm) recip='<span style="font-size:9px;background:var(--purple-bg);color:var(--purple);border-radius:3px;padding:1px 5px;margin-left:4px">→ '+esc(rm.name.split(' ')[0])+'</span>';
+          var recips=p.recipients&&p.recipients.length?p.recipients:(p.recipient?[p.recipient]:[]);
+          var recipTag='';
+          if(recips.length===0){
+            recipTag=''; // all — no tag needed
+          } else {
+            var rnames=recips.map(function(rid){
+              if(rid==='__self__') return w.name.split(' ')[0];
+              var rm=field.find(function(x){return x.id===rid;});
+              return rm?rm.name.split(' ')[0]:'?';
+            });
+            recipTag='<span style="font-size:9px;background:var(--purple-bg);color:var(--purple);border-radius:3px;padding:1px 5px;margin-left:4px">→ '+esc(rnames.join(', '))+'</span>';
           }
           var typeIcon={'cash':'💵','transfer':'💳','self':'🟣'}[p.type]||'💰';
           var typeColor={'cash':'var(--green)','transfer':'var(--teal)','self':'var(--purple)'}[p.type]||'var(--text)';
@@ -1551,7 +1815,7 @@ function renderField(){
           dh+='<span style="color:var(--muted);font-size:10px;font-family:monospace;min-width:78px">'+esc(p.date||'')+'</span>';
           dh+=typeIcon;
           dh+='<span style="flex:1;color:var(--muted);font-size:10px">'+esc(p.note||'')+'</span>';
-          dh+=recip;
+          dh+=recipTag;
           dh+='<span style="font-family:monospace;font-weight:600;color:'+typeColor+'">'+fmt(p.amount)+'₽</span>';
           dh+='</div>';
         });
