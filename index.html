@@ -330,7 +330,13 @@ select.sty:focus{border-color:var(--accent)}
       <h3>Детализация по исполнителям</h3>
       <span style="font-size:10px;color:var(--muted)">позиции · доп. работы · выплаты</span>
     </div>
-    <div id="dash-field-detail"></div>
+    <!-- Предупреждения -->
+    <div id="dash-warnings" style="display:none;background:var(--amber-bg);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:10px 14px;margin-bottom:12px"></div>
+
+    <div class="sec">
+      <div class="sh"><h3>Детализация по исполнителям</h3><span style="font-size:10px;color:var(--muted)">позиции · доп. работы · выплаты · остатки</span></div>
+      <div id="dash-field-detail"></div>
+    </div>
   </div>
 </div>
 
@@ -1961,34 +1967,100 @@ function updateDash(){
   var iF=income.filter(function(r){return inP(r.date,f,t);});
   var iC=iF.filter(function(r){return r.type==='cash';}).reduce(function(s,r){return s+r.amount;},0);
   var iB=iF.filter(function(r){return r.type==='bank';}).reduce(function(s,r){return s+r.amount;},0);
-  var usn=Math.round(iB*0.06),iNet=iC+iB-usn;
-  var fAct=field.reduce(function(s,w){return s+wAct(w);},0);
+  var usn=Math.round(iB*0.06);
+  var iNet=iC+iB-usn;
+
+  // ── Полевые: считаем без двойного счёта (только лидеры + одиночки) ──
+  var EXCL=['tgi-admin@botsmith.ru','test_worker@botsmith.ru','vasya@klass.ru','sergo@ya.ru','2959796@gmail.com'];
+  var leaders=field.filter(function(w){
+    var em=(w.email||'').toLowerCase();
+    return EXCL.indexOf(em)<0 && !getLeader(w);
+  });
+
+  var fPosAct=0, fHrlyAct=0, fPaid=0, fDebtPos=0, fDebtHrly=0;
+  leaders.forEach(function(w){
+    var members=(w.paysFor||[]).map(function(id){return field.find(function(x){return x.id===id;});}).filter(Boolean);
+    var gPosAct=wAct(w)+members.reduce(function(s,m){return s+wAct(m);},0);
+    var gHrly=wHourlyTotal(w)+members.reduce(function(s,m){return s+wHourlyTotal(m);},0);
+    var gReceived2=wPaid(w)+members.reduce(function(s,m){return s+wPaid(m);},0);
+    fPosAct+=gPosAct;
+    fHrlyAct+=gHrly;
+    fPaid+=gReceived2;
+    var gFull=gPosAct+gHrly;
+    var gDebt2=gFull-gReceived2;
+    if(gDebt2>0){
+      // Split debt proportionally between positions and hourly
+      var posDebt=gFull>0?gDebt2*(gPosAct/gFull):0;
+      var hrlyDebt=gFull>0?gDebt2*(gHrly/gFull):0;
+      fDebtPos+=posDebt;
+      fDebtHrly+=hrlyDebt;
+    }
+  });
+  var fAct=fPosAct+fHrlyAct;
+  var fDebt=fAct-fPaid;
   var fC=field.reduce(function(s,w){return s+wPaid(w,'cash');},0);
   var fT=field.reduce(function(s,w){return s+wPaid(w,'transfer');},0);
   var fS=field.reduce(function(s,w){return s+wPaid(w,'self');},0);
-  var fPaid=fC+fT+fS;var fDebt=Math.max(0,fAct-fPaid);
+
   var eF=expenses.filter(function(r){return inP(r.date,f,t);});
   var eM=eF.filter(function(r){return r.type==='mat';}).reduce(function(s,r){return s+r.qty*r.price;},0);
   var eH=eF.filter(function(r){return r.type==='hour';}).reduce(function(s,r){return s+r.qty*r.price;},0);
   var eD=eF.filter(function(r){return r.type==='day';}).reduce(function(s,r){return s+r.qty*r.price;},0);
   var eX=eF.filter(function(r){return r.type==='fix';}).reduce(function(s,r){return s+r.qty*r.price;},0);
   var eT=eM+eH+eD+eX;
-  var bal=iNet-fPaid-eT,rBal=bal-fDebt;
+  var bal=iNet-fPaid-eT;
+
+  // Warnings
+  var warns=[];
+  field.forEach(function(w){
+    (w.hourlyWork||[]).forEach(function(h){
+      if(!h.date&&h.qty) warns.push(w.name.split(' ')[0]+': «'+esc(h.desc||'доп.работа')+'» — нет даты');
+    });
+  });
+  // Anomalies
+  leaders.forEach(function(w){
+    var paid=wPaid(w);
+    var act=wAct(w)+wHourlyTotal(w);
+    if(paid>act*1.5&&act>0) warns.push(w.name.split(' ')[0]+': переплата '+fmt(Math.round(paid-act))+' ₽ — проверить');
+  });
+
+  // KPI row
   document.getElementById('krow').innerHTML=
-    kpi('kg','Приход нетто',fmt(iNet)+' ₽','нал '+fmt(iC)+' + б/нал '+fmt(iB))+
-    kpi('kb','УСН 6%',fmt(usn)+' ₽','от безнала '+fmt(iB)+' ₽')+
-    kpi('kr','Выплачено полевым',fmt(fPaid)+' ₽','начислено '+fmt(fAct)+' ₽')+
-    kpi('ka','Долг полевым',fmt(fDebt)+' ₽',field.filter(function(w){return effDebt(w)>0&&wPos(w)>0;}).length+' чел.')+
-    kpi('kr','Расходы',fmt(eT)+' ₽','за период')+
-    kpi(bal>=0?'kc':'kr',bal>=0?'На руках':'Перерасход',fmt(bal)+' ₽','реально: '+fmt(rBal)+' ₽');
+    kpi('kc','Приход нетто',fmt(iNet)+' ₽','нал '+fmt(iC)+' + б/нал '+fmt(iB))+
+    kpi('kb','УСН к уплате',fmt(usn)+' ₽','6% от безнала '+fmt(iB)+' ₽')+
+    kpi('ka','Начислено полевым',fmt(fAct)+' ₽',
+      '<span style="color:var(--text)">поз '+fmt(fPosAct)+'</span> + <span style="color:var(--amber)">доп '+fmt(fHrlyAct)+'</span>')+
+    kpi('kp','Выплачено',fmt(fPaid)+' ₽',
+      fDebt>0?'<span style="color:var(--red)">долг '+fmt(Math.round(fDebt))+' ₽</span>':'<span style="color:var(--green)">✓ закрыто</span>')+
+    kpi('kr','Расходы',fmt(eT)+' ₽',eM?'мат '+fmt(eM):'')+
+    kpi(bal>=0?'kc':'kr',bal>=0?'Остаток на руках':'Дефицит',fmt(Math.abs(bal))+' ₽',
+      bal>=0?'свободных средств':'расходы превышают приход');
+
   function ss(id,v,c){var e=document.getElementById(id);if(e){e.textContent=v;if(c)e.style.color=c;}}
-  ss('s-ic',fmt(iC)+' ₽');ss('s-ib',fmt(iB)+' ₽');ss('s-usn','−'+fmt(usn)+' ₽');ss('s-in',fmt(iNet)+' ₽');
-  ss('s-fa',fmt(fAct)+' ₽');ss('s-fc',fmt(fC)+' ₽');ss('s-ft',fmt(fT)+' ₽');ss('s-fs',fmt(fS)+' ₽');ss('s-fd',fmt(fDebt)+' ₽');
-  ss('s-em',fmt(eM)+' ₽');ss('s-eh',fmt(eH)+' ₽');ss('s-ed',fmt(eD)+' ₽');ss('s-ef',fmt(eX)+' ₽');ss('s-et',fmt(eT)+' ₽');
-  ss('s-bi',fmt(iNet)+' ₽');ss('s-bf','−'+fmt(fPaid)+' ₽');ss('s-be','−'+fmt(eT)+' ₽');ss('s-bu','−'+fmt(usn)+' ₽');
-  var be=document.getElementById('s-bal');if(be){be.textContent=fmt(bal)+' ₽';be.style.color=bal>=0?'var(--green)':'var(--red)';}
-  ss('s-bdf',fmt(fDebt)+' ₽');
-  var br=document.getElementById('s-br');if(br){br.textContent=fmt(rBal)+' ₽';br.style.color=rBal>=0?'var(--green)':'var(--red)';}
+  ss('s-ic',fmt(iC)+' ₽'); ss('s-ib',fmt(iB)+' ₽'); ss('s-usn','−'+fmt(usn)+' ₽'); ss('s-in',fmt(iNet)+' ₽');
+  // Field summary — split positions vs hourly
+  ss('s-fa',fmt(fPosAct)+' ₽');
+  var faEl=document.getElementById('s-fa'); if(faEl) faEl.title='позиции '+fmt(fPosAct)+' + доп.работы '+fmt(fHrlyAct);
+  ss('s-fc',fmt(fC)+' ₽'); ss('s-ft',fmt(fT)+' ₽'); ss('s-fs',fmt(fS)+' ₽');
+  ss('s-fd', fDebt>1 ? fmt(Math.round(fDebt))+' ₽' : '✓ 0', fDebt>1?'var(--red)':'var(--green)');
+  ss('s-em',fmt(eM)+' ₽'); ss('s-eh',fmt(eH)+' ₽'); ss('s-ed',fmt(eD)+' ₽'); ss('s-ef',fmt(eX)+' ₽'); ss('s-et',fmt(eT)+' ₽');
+  ss('s-bi',fmt(iNet)+' ₽'); ss('s-bf','−'+fmt(fPaid)+' ₽'); ss('s-be','−'+fmt(eT)+' ₽'); ss('s-bu','−'+fmt(usn)+' ₽');
+  var be=document.getElementById('s-bal'); if(be){be.textContent=fmt(Math.abs(bal))+' ₽';be.style.color=bal>=0?'var(--green)':'var(--red)';}
+  ss('s-bdf',fmt(Math.round(fDebt))+' ₽');
+  var br=document.getElementById('s-br'); if(br){br.textContent=(bal>=0?'+':'')+fmt(bal)+' ₽';br.style.color=bal>=0?'var(--green)':'var(--red)';}
+
+  // Warnings block
+  var warnEl=document.getElementById('dash-warnings');
+  if(warnEl){
+    if(warns.length){
+      warnEl.style.display='block';
+      warnEl.innerHTML='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--amber);margin-bottom:6px">⚠️ Требуют внимания</div>'+
+        warns.map(function(w){return'<div style="font-size:11px;padding:2px 0;border-bottom:1px solid var(--border);color:var(--text)">'+w+'</div>';}).join('');
+    } else {
+      warnEl.style.display='none';
+    }
+  }
+
   renderDashDetail();
 }
 
@@ -1996,91 +2068,129 @@ function renderDashDetail(){
   var el=document.getElementById('dash-field-detail');
   if(!el)return;
   var id2w={};field.forEach(function(w){id2w[w.id]=w;});
+  var EXCL=['tgi-admin@botsmith.ru','test_worker@botsmith.ru','vasya@klass.ru','sergo@ya.ru','2959796@gmail.com'];
 
-  function isLeader(w){return w.paysFor&&w.paysFor.length>0;}
-  function leaderOf(w){return field.find(function(x){return(x.paysFor||[]).indexOf(w.id)>=0;});}
-
-  // Build rows: leaders first, then standalone, skip pure members
   var rows=[];
   field.forEach(function(w){
-    if(leaderOf(w))return; // rendered under leader
-    var wPos2=wPos(w); var wAcc=wAct(w); var wPd=wPaid(w);
-    var wH=wHourlyTotal(w); var wHh=wHourlyH(w);
-    var members=(w.paysFor||[]).map(function(id){return id2w[id];}).filter(Boolean);
-    var grpAcc=wAcc+members.reduce(function(s,m){return s+wAct(m);},0);
-    var grpPaid=wPd+members.reduce(function(s,m){return s+wPaid(m);},0);
-    var grpH=wH+members.reduce(function(s,m){return s+wHourlyTotal(m);},0);
-    var grpPos2=wPos2+members.reduce(function(s,m){return s+wPos(m);},0);
-    var debt=grpAcc-grpPaid;
+    var em=(w.email||'').toLowerCase();
+    if(EXCL.indexOf(em)>=0) return;
+    if(getLeader(w)) return; // skip — shown under leader
 
-    var r='<div style="border-bottom:1px solid var(--border)">';
-    // Leader / solo header
-    var debtTag=debt>0?'<span class="debt-tag">−'+fmt(debt)+' ₽</span>':debt<0?'<span style="font-size:10px;color:var(--amber);margin-left:6px">аванс '+fmt(-debt)+' ₽</span>':'<span class="ok-tag">✓</span>';
-    r+='<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:var(--panel)">';
+    var members=(w.paysFor||[]).map(function(id){return id2w[id];}).filter(Boolean);
+    var gPosAct=wAct(w)+members.reduce(function(s,m){return s+wAct(m);},0);
+    var gHrly=wHourlyTotal(w)+members.reduce(function(s,m){return s+wHourlyTotal(m);},0);
+    var gFull=gPosAct+gHrly;
+    var gRec=wPaid(w)+members.reduce(function(s,m){return s+wPaid(m);},0);
+    var gDebt=gFull-gRec;
+    var posDebt=gFull>0?gDebt*(gPosAct/gFull):0;
+    var hrlyDebt=gFull>0?gDebt*(gHrly/gFull):0;
+    var pct=gFull>0?Math.min(100,Math.round(gRec/gFull*100)):0;
+
+    // Status
+    var stColor=Math.abs(gDebt)<1?'var(--green)':gDebt>0?'var(--red)':'var(--amber)';
+    var stText=Math.abs(gDebt)<1?'✓ закрыто':gDebt>0?'−'+fmt(Math.round(gDebt))+' ₽':'аванс +'+fmt(Math.round(-gDebt))+' ₽';
+
+    var r='<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden">';
+
+    // Header
+    r+='<div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border)">';
     r+='<div style="display:flex;align-items:center;gap:8px">';
     r+='<span style="font-weight:600;font-size:13px">'+esc(w.name)+'</span>';
-    if(members.length) r+='<span class="member-tag">группа · '+members.length+' чел.</span>';
-    r+=debtTag;
+    if(members.length) r+='<span class="member-tag">'+members.length+' чел.</span>';
+    r+='<button class="bi" style="font-size:11px;padding:1px 6px" onclick="openFldModal(\''+w.id+'\',false)">✏️</button>';
     r+='</div>';
-    r+='<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--muted)">'+fmt(grpPos2)+' поз</span>';
+    r+='<div style="text-align:right">';
+    r+='<div style="font-size:10px;color:var(--muted)">начислено</div>';
+    r+='<div style="font-family:monospace;font-size:12px;font-weight:600">'+fmt(gPosAct)+(gHrly?'<span style="color:var(--amber)"> +'+fmt(gHrly)+'</span>':'')+'</div>';
+    r+='<div style="font-family:monospace;font-size:13px;font-weight:700">= '+fmt(gFull)+' ₽</div>';
+    r+='</div>';
+    r+='<div style="text-align:right;min-width:90px">';
+    r+='<div style="font-size:10px;color:var(--muted)">получено</div>';
+    r+='<div style="font-family:monospace;font-size:13px;font-weight:700;color:var(--green)">'+fmt(gRec)+' ₽</div>';
+    r+='<div style="font-size:11px;font-weight:600;color:'+stColor+'">'+stText+'</div>';
+    r+='</div>';
     r+='</div>';
 
-    // Detail rows
-    r+='<div style="padding:0 14px 8px">';
-    // Function to render one worker's detail
-    function workerRows(ww, indent){
-      var prefix=indent?'<span style="color:var(--muted);margin-right:6px">↳</span>':'';
-      var hwrk=ww.hourlyWork||[];
-      var wAcc2=wAct(ww); var wPos3=wPos(ww); var wH2=wHourlyTotal(ww);
-      var rows2='';
+    // Progress bar
+    r+='<div style="height:4px;background:var(--border)"><div style="height:4px;width:'+pct+'%;background:'+(pct>=100?'var(--green)':pct>50?'var(--accent)':'var(--amber)')+'"></div></div>';
 
-      // Positions breakdown
-      if(wPos3>0){
-        var posBreak=(ww.positions||[]).filter(function(p){return p.count>0;}).map(function(p){
-          return'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:10px;color:var(--muted);margin-right:6px">'+fmt(p.count)+'×'+fmt(p.rate)+'₽</span>';
-        }).join('');
-        rows2+='<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">';
-        rows2+='<div style="display:flex;align-items:center;gap:4px">'+prefix+'<span style="font-size:11px;color:var(--muted)">📋 Позиции</span>'+(indent?'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+esc(ww.name.split(' ')[0])+'</span>':'')+'</div>';
-        rows2+='<div style="display:flex;align-items:center;gap:8px">'+posBreak+'<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:600">'+fmt(wAcc2)+' ₽</span></div>';
-        rows2+='</div>';
-      }
+    // Detail table
+    r+='<div style="padding:0">';
+    r+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
+    r+='<tr style="background:var(--subtle)">';
+    r+='<td style="padding:5px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Сотрудник</td>';
+    r+='<td style="padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:right">Тарифы</td>';
+    r+='<td style="padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:right">Позиции</td>';
+    r+='<td style="padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--amber);text-align:right">Доп.работы</td>';
+    r+='<td style="padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:right">Итого</td>';
+    r+='<td style="padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--green);text-align:right">Доля</td>';
+    r+='<td style="padding:5px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:right">Остаток</td>';
+    r+='</tr>';
 
-      // Hourly breakdown
-      hwrk.forEach(function(h){
-        var amt=calcHourlyEntry(h);
-        if(!amt&&!h.qty)return;
-        var u=h.unit||'ч';
-        var qtyStr=fmt(+h.qty||0)+' '+u;
-        var hrsStr=u!=='шт'?'= '+fmt((+h.qty||0)*unitH(u))+'ч':'';
-        rows2+='<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">';
-        rows2+='<div style="display:flex;align-items:center;gap:4px">'+prefix;
-        rows2+='<span style="font-size:11px;color:var(--muted)">⏱ '+esc(h.desc||'Доп. работа')+'</span>';
-        if(indent)rows2+='<span style="font-size:10px;color:var(--muted);margin-left:4px">'+esc(ww.name.split(' ')[0])+'</span>';
-        rows2+='</div>';
-        rows2+='<div style="text-align:right"><span style="font-size:10px;color:var(--muted);margin-right:8px">'+qtyStr+' '+hrsStr+' × '+fmt(+h.rate||750)+'₽</span>';
-        rows2+='<span style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;font-weight:600;color:var(--amber)">'+fmt(amt)+' ₽</span></div>';
-        rows2+='</div>';
-      });
-      return rows2;
+    function personRow(ww, isLdr){
+      var pAct=wAct(ww); var pHrly=wHourlyTotal(ww); var pFull=pAct+pHrly;
+      var share=isLdr?memberShare(ww,ww):memberShare(ww,w);
+      var debt2=pFull-share;
+      var debtStr=Math.abs(debt2)<1?
+        '<span style="color:var(--green)">✓</span>':
+        debt2>0?'<span style="color:var(--red);font-weight:600">−'+fmt(Math.round(debt2))+'</span>':
+        '<span style="color:var(--amber)">+'+fmt(Math.round(-debt2))+'</span>';
+      var rates=(ww.positions||[]).filter(function(p){return p.count>0;}).map(function(p){
+        var col=p.rate===30?'var(--green)':p.rate===50?'var(--amber)':'var(--accent)';
+        return'<span style="background:var(--subtle);border-radius:3px;padding:1px 4px;font-size:9px;color:'+col+';margin-right:2px">'+p.rate+'₽</span>';
+      }).join('');
+      var hrlyStr=pHrly?'<span style="color:var(--amber);font-weight:600">'+fmt(pHrly)+'</span>':'<span style="color:var(--muted)">—</span>';
+      var hwCount=(ww.hourlyWork||[]).length;
+      var hwWarn=(ww.hourlyWork||[]).some(function(h){return !h.date&&h.qty;});
+
+      return'<tr style="border-top:1px solid var(--border)'+(isLdr?';background:var(--hov)':'')+'">'+
+        '<td style="padding:6px 14px">'+
+          (!isLdr?'<span style="color:var(--muted);margin-right:4px">↳</span>':'')+
+          '<span style="font-weight:'+(isLdr?'600':'400')+'">'+esc(ww.name)+'</span>'+
+          (isLdr&&members.length?'<span style="font-size:9px;color:var(--accent);background:var(--accent-bg);border-radius:3px;padding:1px 4px;margin-left:4px">лидер</span>':'')+
+          (hwWarn?'<span title="Есть записи без даты" style="color:var(--amber);margin-left:4px;font-size:10px">⚠️</span>':'')+
+        '</td>'+
+        '<td style="padding:6px 8px;text-align:right">'+rates+'</td>'+
+        '<td style="padding:6px 8px;text-align:right;font-family:monospace;font-weight:600">'+fmt(pAct)+'</td>'+
+        '<td style="padding:6px 8px;text-align:right">'+hrlyStr+(hwCount?'<span style="font-size:9px;color:var(--muted);margin-left:3px">'+hwCount+'зап</span>':'')+'</td>'+
+        '<td style="padding:6px 8px;text-align:right;font-family:monospace;font-weight:700">'+fmt(pFull)+'</td>'+
+        '<td style="padding:6px 8px;text-align:right;font-family:monospace;color:var(--green)">'+fmt(Math.round(share))+'</td>'+
+        '<td style="padding:6px 14px;text-align:right;font-family:monospace">'+debtStr+'</td>'+
+        '</tr>';
     }
 
-    r+=workerRows(w, false);
-    members.forEach(function(m){r+=workerRows(m, true);});
+    r+=personRow(w, true);
+    members.forEach(function(m){r+=personRow(m, false);});
 
-    // Totals row
-    var totalAcc=grpAcc+grpH;
-    r+='<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;margin-top:2px">';
-    r+='<span style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Итого начислено</span>';
-    r+='<div style="display:flex;align-items:center;gap:16px">';
-    r+='<span style="font-size:11px;color:var(--muted)">позиции <b style="color:var(--text)">'+fmt(grpAcc)+' ₽</b></span>';
-    if(grpH>0) r+='<span style="font-size:11px;color:var(--muted)">доп. работы <b style="color:var(--amber)">'+fmt(grpH)+' ₽</b></span>';
-    r+='<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:'+(debt>0?'var(--red)':debt<0?'var(--amber)':'var(--green)')+'">выплачено '+fmt(grpPaid)+' ₽</span>';
-    r+='</div></div>';
-    r+='</div></div>';
+    // Totals footer
+    r+='<tr style="border-top:2px solid var(--border);background:var(--subtle)">';
+    r+='<td style="padding:6px 14px;font-weight:700;font-size:11px">Итого</td>';
+    r+='<td></td>';
+    r+='<td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:11px;color:var(--muted)">'+fmt(gPosAct)+'</td>';
+    r+='<td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:11px;color:var(--amber)">'+fmt(gHrly)+'</td>';
+    r+='<td style="padding:6px 8px;text-align:right;font-family:monospace;font-weight:700">'+fmt(gFull)+'</td>';
+    r+='<td style="padding:6px 8px;text-align:right;font-family:monospace;font-weight:700;color:var(--green)">'+fmt(gRec)+'</td>';
+    r+='<td style="padding:6px 14px;text-align:right;font-family:monospace;font-weight:700;color:'+stColor+'">'+stText+'</td>';
+    r+='</tr>';
+    r+='</table></div>';
+
+    // Warnings for this worker
+    var ww_warns=[];
+    [w].concat(members).forEach(function(ww){
+      (ww.hourlyWork||[]).forEach(function(h){
+        if(!h.date&&h.qty) ww_warns.push('⚠️ '+ww.name.split(' ')[0]+': «'+(h.desc||'доп.работа')+'» — нет даты');
+      });
+    });
+    if(ww_warns.length){
+      r+='<div style="padding:6px 14px;background:var(--amber-bg);border-top:1px solid var(--border);font-size:10px;color:var(--amber)">'+
+        ww_warns.join(' · ')+'</div>';
+    }
+
+    r+='</div>';
     rows.push(r);
   });
 
-  el.innerHTML=rows.join('')||'<div class="empty-state"><div class="icon">👤</div><p>Нет полевых сотрудников</p></div>';
+  el.innerHTML=rows.join('')||'<div class="empty-state"><div class="icon">👥</div><p>Нет сотрудников</p></div>';
 }
 function kpi(cls,label,val,sub){return'<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div><div class="kpi-v">'+val+'</div><div class="kpi-s">'+sub+'</div></div>';}
 
