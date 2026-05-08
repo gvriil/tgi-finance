@@ -937,31 +937,36 @@ function updAllocPreview(){
   var ap=document.getElementById('alloc-preview');
   var ar=document.getElementById('alloc-rows');
   if(!_EM.length){ap.style.display='none';return;}
-  var pseudoGA=_ER.reduce(function(s,p){return s+(+p.count||0)*(+p.rate||0);},0);
-  _EM.forEach(function(id){var m=field.find(function(x){return x.id===id;});if(m)pseudoGA+=wAct(m);});
   if(!_EP.length){ap.style.display='none';return;}
   ap.style.display='block';
 
-  function rbd(positions){
-    var parts=(positions||[]).filter(function(p){return(+p.count||0)>0;}).map(function(p){return fmt(p.count)+' × '+fmt(p.rate)+'₽';});
+  function rbd(positions,hourly){
+    var parts=(positions||[]).filter(function(p){return(+p.count||0)>0;}).map(function(p){
+      return'<span style="font-size:10px;color:var(--muted)">'+fmt(p.count)+'×'+fmt(p.rate)+'₽</span>';
+    });
+    var h=wHourlyTotal({hourlyWork:hourly||[]});
+    if(h) parts.push('<span style="font-size:10px;color:var(--amber)">⏱+'+fmt(h)+'₽</span>');
     return parts.length?parts.join('<br>'):'—';
   }
 
   var leaderAct=_ER.reduce(function(s,p){return s+(+p.count||0)*(+p.rate||0);},0);
-  var leaderPos=_ER.reduce(function(s,p){return s+(+p.count||0);},0);
-  var arHtml='<div class="alloc-row"><span class="alloc-name" style="color:var(--text)">'+(document.getElementById('mf-name').value||'')+'</span>';
-  arHtml+='<span class="alloc-pct" style="font-size:10px;color:var(--muted);line-height:1.6">'+rbd(_ER)+'</span>';
-  arHtml+='<span class="alloc-amt">'+fmt(leaderAct)+' ₽</span></div>';
+  var leaderHrly=_EH.reduce(function(s,h){return s+calcHourlyEntry(h);},0);
+  var leaderFull=leaderAct+leaderHrly;
+
+  var arHtml='<div class="alloc-row" style="background:var(--hov)">'+
+    '<span class="alloc-name" style="color:var(--text);font-weight:600">'+(document.getElementById('mf-name').value||'')+'<span style="font-size:9px;color:var(--accent);margin-left:4px">лидер</span></span>'+
+    '<span class="alloc-pct" style="line-height:1.6">'+rbd(_ER,_EH)+'</span>'+
+    '<span class="alloc-amt">'+fmt(leaderFull)+' ₽</span></div>';
 
   _EM.forEach(function(id){
     var m=field.find(function(x){return x.id===id;});if(!m)return;
-    var mA=wAct(m);
-    arHtml+='<div class="alloc-row"><span class="alloc-name">↳ '+esc(m.name)+'</span>';
-    arHtml+='<span class="alloc-pct" style="font-size:10px;color:var(--muted);line-height:1.6">'+rbd(m.positions)+'</span>';
-    arHtml+='<span class="alloc-amt">'+fmt(mA)+' ₽</span></div>';
+    var mA=wAct(m)+wHourlyTotal(m);
+    arHtml+='<div class="alloc-row"><span class="alloc-name">↳ '+esc(m.name)+'</span>'+
+      '<span class="alloc-pct" style="line-height:1.6">'+rbd(m.positions,m.hourlyWork)+'</span>'+
+      '<span class="alloc-amt">'+fmt(mA)+' ₽</span></div>';
   });
   ar.innerHTML=arHtml;
-  document.getElementById('pay-block-lbl').textContent='Выплаты (на всю группу)';
+  document.getElementById('pay-block-lbl').textContent='Выплаты (получает лидер на всю группу)';
 }
 
 // НПД callout
@@ -1026,18 +1031,58 @@ function editMember(id){
 // --- Выплаты ---
 function drawPays(){
   var el=document.getElementById('pt-list');
-  if(!_EP.length){el.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Нет записей</div>';updPayTotal();return;}
+  if(!_EP.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Нет записей</div>';
+    updPayTotal();return;
+  }
+  // Build recipient options: self + all members
+  var recipOpts='<option value="">— себе —</option>';
+  _EM.forEach(function(id){
+    var m=field.find(function(x){return x.id===id;});
+    if(m) recipOpts+='<option value="'+id+'">'+esc(m.name.split(' ')[0]+' '+m.name.split(' ')[1])+'</option>';
+  });
+  var hasGroup=_EM.length>0;
+
   el.innerHTML=_EP.map(function(p,i){
-    var topts=Object.keys(PT_TYPES).map(function(k){return'<option value="'+k+'"'+(p.type===k?' selected':'')+'>'+PT_TYPES[k]+'</option>';}).join('');
-    return'<div class="pay-row">'+
-      '<input type="date" class="inp" value="'+(p.date?i2r(p.date)||today():today())+'" onchange="_EP['+i+'].date=r2i(this.value);updPayTotal();updAllocPreview()">'+
-      '<select class="inp" onchange="_EP['+i+'].type=this.value;updPayTotal();updAllocPreview()">'+topts+'</select>'+
-      '<input class="inp r" type="number" value="'+p.amount+'" placeholder="0" oninput="_EP['+i+'].amount=+this.value;updPayTotal();updAllocPreview()">'+
-      '<button class="bi del" onclick="delPay('+i+')">×</button></div>';
+    var topts=Object.keys(PT_TYPES).map(function(k){
+      return'<option value="'+k+'"'+(p.type===k?' selected':'')+'>'+PT_TYPES[k]+'</option>';
+    }).join('');
+
+    // Recipient: only show for cash/transfer (not self = самозанятый)
+    var recipSel='';
+    if(hasGroup){
+      // Build opts with current selection
+      var rOpts='<option value=""'+((!p.recipient)?' selected':'')+'>— всей группе —</option>';
+      _EM.forEach(function(id){
+        var m=field.find(function(x){return x.id===id;});
+        if(m) rOpts+='<option value="'+id+'"'+(p.recipient===id?' selected':'')+'>↳ '+esc(m.name.split(' ')[0])+'</option>';
+      });
+      recipSel='<select class="inp" style="font-size:11px" title="Кому из группы" onchange="_EP['+i+'].recipient=this.value;updPayTotal();updAllocPreview()">'+rOpts+'</select>';
+    } else {
+      // Solo: free text note for recipient (e.g. last 4 digits of card)
+      recipSel='<input class="inp" type="text" placeholder="Получатель / карта" style="font-size:11px" value="'+esc(p.recipient||'')+'" onchange="_EP['+i+'].recipient=this.value" title="Имя получателя или последние цифры карты">';
+    }
+
+    // Note field
+    var noteEl='<input class="inp" type="text" placeholder="Примечание" style="font-size:11px" value="'+esc(p.note||'')+'" onchange="_EP['+i+'].note=this.value">';
+
+    return'<div style="display:grid;grid-template-columns:100px 85px '+
+      (hasGroup?'100px ':'120px ')+
+      '1fr 90px 24px;gap:4px;align-items:center;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid var(--border)">'+
+      '<input type="date" class="inp" style="font-size:11px;padding:4px 6px" value="'+(p.date?i2r(p.date)||today():today())+'" onchange="_EP['+i+'].date=r2i(this.value);updPayTotal();updAllocPreview()">'+
+      '<select class="inp" style="font-size:11px;padding:4px 4px" onchange="_EP['+i+'].type=this.value;updPayTotal();updAllocPreview()">'+topts+'</select>'+
+      recipSel+
+      noteEl+
+      '<input class="inp r" type="number" style="font-size:12px;font-weight:600;padding:4px 6px" value="'+(p.amount||'')+'" placeholder="0 ₽" oninput="_EP['+i+'].amount=+this.value;updPayTotal();updAllocPreview()">'+
+      '<button class="bi del" onclick="delPay('+i+')" title="Удалить">×</button>'+
+      '</div>';
   }).join('');
   updPayTotal();updAllocPreview();
 }
-function addPay(){_EP.push({id:uid(),date:todayRu(),type:'self',amount:0,note:''});drawPays();}
+function addPay(){
+  _EP.push({id:uid(),date:todayRu(),type:'self',amount:0,note:'',recipient:''});
+  drawPays();
+}
 function delPay(i){_EP.splice(i,1);drawPays();}
 function updPayTotal(){
   var c=_EP.filter(function(p){return p.type==='cash';}).reduce(function(s,p){return s+(+p.amount||0);},0);
@@ -1235,7 +1280,32 @@ function renderField(){
       dh+='<td style="padding:7px 10px;text-align:right;font-family:monospace;font-weight:700;color:'+(grpDebt2>1?'var(--red)':grpDebt2<-1?'var(--amber)':'var(--green)')+'">'+
           (Math.abs(grpDebt2)<1?'✓ закрыто':grpDebt2>0?'−'+fmt(Math.round(grpDebt2))+'₽':'авнс '+fmt(Math.round(-grpDebt2))+'₽')+
           '</td></tr>';
-      dh+='</table></div></td></tr>';
+      dh+='</table>';
+
+      // Payments breakdown with recipient
+      if(wPays(w).length){
+        dh+='<div style="padding:8px 12px;border-top:1px solid var(--border);background:var(--subtle)">';
+        dh+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">История выплат лидеру</div>';
+        wPays(w).forEach(function(p){
+          var recip='';
+          if(p.recipient){
+            var rm=field.find(function(x){return x.id===p.recipient;});
+            if(rm) recip='<span style="font-size:9px;background:var(--purple-bg);color:var(--purple);border-radius:3px;padding:1px 5px;margin-left:4px">→ '+esc(rm.name.split(' ')[0])+'</span>';
+          }
+          var typeIcon={'cash':'💵','transfer':'💳','self':'🟣'}[p.type]||'💰';
+          var typeColor={'cash':'var(--green)','transfer':'var(--teal)','self':'var(--purple)'}[p.type]||'var(--text)';
+          dh+='<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;border-bottom:1px solid var(--border)">';
+          dh+='<span style="color:var(--muted);font-size:10px;font-family:monospace;min-width:78px">'+esc(p.date||'')+'</span>';
+          dh+=typeIcon;
+          dh+='<span style="flex:1;color:var(--muted);font-size:10px">'+esc(p.note||'')+'</span>';
+          dh+=recip;
+          dh+='<span style="font-family:monospace;font-weight:600;color:'+typeColor+'">'+fmt(p.amount)+'₽</span>';
+          dh+='</div>';
+        });
+        dh+='</div>';
+      }
+
+      dh+='</div></td></tr>';
       rows.push(dh);
 
       // Sub-rows for members
