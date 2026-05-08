@@ -1044,18 +1044,35 @@ function updPayTotal(){
   var t=_EP.filter(function(p){return p.type==='transfer';}).reduce(function(s,p){return s+(+p.amount||0);},0);
   var s=_EP.filter(function(p){return p.type==='self';}).reduce(function(s,p){return s+(+p.amount||0);},0);
   var tot=c+t+s;
-  // accrual for this worker only (not group)
-  var act=_ER.reduce(function(a,p){return a+(+p.count||0)*(+p.rate||0);},0);
-  // group accrual if leader
-  var gact=act;_EM.forEach(function(id){var m=field.find(function(x){return x.id===id;});if(m)gact+=wAct(m);});
+  // Accrual: positions + hourly
+  var posAct=_ER.reduce(function(a,p){return a+(+p.count||0)*(+p.rate||0);},0);
+  var hrlyAct=_EH.reduce(function(a,h){return a+calcHourlyEntry(h);},0);
+  var act=posAct+hrlyAct;
+  // Group total if leader
+  var gact=act;
+  _EM.forEach(function(id){
+    var m=field.find(function(x){return x.id===id;});
+    if(m) gact+=wAct(m)+wHourlyTotal(m);
+  });
   var debt=gact-tot;
+  var isGrp=_EM.length>0;
   var html='';
+  html+='<div class="ibox-row"><span class="ik">📋 Позиции'+(isGrp?' (группа)':'')+'</span><span class="iv mono">'+fmt(isGrp?gact-(_EM.reduce(function(s,id){var m=field.find(function(x){return x.id===id;});return s+(m?wHourlyTotal(m):0);},0)+hrlyAct):posAct)+' ₽</span></div>';
+  if(hrlyAct||(_EM.length&&_EM.some(function(id){var m=field.find(function(x){return x.id===id;});return m&&wHourlyTotal(m)>0;}))){
+    var grpHrly=hrlyAct+_EM.reduce(function(s,id){var m=field.find(function(x){return x.id===id;});return s+(m?wHourlyTotal(m):0);},0);
+    html+='<div class="ibox-row"><span class="ik">⏱ Доп. работа</span><span class="iv mono" style="color:var(--amber)">'+fmt(grpHrly)+' ₽</span></div>';
+  }
+  html+='<div class="ibox-row" style="border-top:1px solid var(--border);padding-top:5px;margin-top:3px"><span class="ik" style="font-weight:600">= Итого к выплате'+(isGrp?' (группа)':'')+'</span><span class="iv mono" style="font-weight:700">'+fmt(gact)+' ₽</span></div>';
+  html+='<div style="height:8px"></div>';
   if(c)html+='<div class="ibox-row"><span class="ik">💵 Нал</span><span class="iv" style="color:var(--green)">'+fmt(c)+' ₽</span></div>';
   if(t)html+='<div class="ibox-row"><span class="ik">💳 Перевод</span><span class="iv" style="color:var(--teal)">'+fmt(t)+' ₽</span></div>';
   if(s)html+='<div class="ibox-row"><span class="ik">🟣 Самозанятым</span><span class="iv" style="color:var(--purple)">'+fmt(s)+' ₽</span></div>';
   html+='<div class="ibox-row tot"><span class="ik">Итого выплачено</span><span class="iv">'+fmt(tot)+' ₽</span></div>';
-  html+='<div class="ibox-row"><span class="ik">Начислено'+(gact>act?' (группа)':'')+'</span><span class="iv">'+fmt(gact)+' ₽</span></div>';
-  html+='<div class="ibox-row"><span class="ik">Остаток</span><span class="iv" style="color:'+(debt>0?'var(--red)':debt<0?'var(--amber)':'var(--green)')+';">'+(debt>0?fmt(debt)+' ₽':debt<0?'перепл. '+fmt(-debt)+' ₽':'✓ погашено')+'</span></div>';
+  html+='<div class="ibox-row"><span class="ik">Остаток</span><span class="iv" style="color:'+(debt>1?'var(--red)':debt<-1?'var(--amber)':'var(--green)')+';">'+(Math.abs(debt)<1?'✓ закрыто':debt>0?fmt(Math.round(debt))+' ₽':'переплата '+fmt(Math.round(-debt))+' ₽')+'</span></div>';
+  // Progress bar
+  var pct=gact>0?Math.min(100,Math.round(tot/gact*100)):0;
+  html+='<div class="progress-wrap"><div class="progress-bar" style="width:'+pct+'%;background:'+(pct>=100?'var(--green)':pct>50?'var(--accent)':'var(--amber)')+'"></div></div>';
+  html+='<div style="text-align:right;font-size:9px;color:var(--muted);margin-top:2px">'+pct+'% оплачено</div>';
   document.getElementById('pay-total').innerHTML=html;
 }
 
@@ -1078,126 +1095,212 @@ function renderField(){
   refreshDL();
   var ft=document.getElementById('fld-ft').value;
   var q=(document.getElementById('fld-q').value||'').toLowerCase();
-  // only non-members, sorted alpha
   var workers=field.filter(function(w){return!isMember(w);}).slice().sort(function(a,b){return a.name.localeCompare(b.name,'ru');});
   var tb=document.getElementById('tb-field');
   var rows=[];
-  var totPos=0,totAct=0,totC=0,totT=0,totS=0,totPaid=0,idx=1;
+  var totPos=0,totAct=0,totPaid=0,idx=1;
+
+  // Full accrual = positions + hourly
+  function fullAct(ww){ return wAct(ww)+wHourlyTotal(ww); }
+  function gFullAct(leader){
+    var a=fullAct(leader);
+    (leader.paysFor||[]).forEach(function(id){var m=field.find(function(x){return x.id===id;});if(m)a+=fullAct(m);});
+    return a;
+  }
+  // Member share of full accrual
+  function memberFullShare(member,leader){
+    var ga=gFullAct(leader);
+    if(ga<=0)return wPaid(member);
+    var lr=wPaid(leader);
+    var direct=wPaid(member);
+    if(member.id===leader.id) return lr*(fullAct(leader)/ga);
+    return lr*(fullAct(member)/ga)+direct;
+  }
 
   workers.forEach(function(w){
     var isGroup=(w.paysFor||[]).length>0;
     var dPos=isGroup?gPos(w):wPos(w);
-    var dAct=isGroup?gAct(w):wAct(w);
-    var dPaid=isGroup?gPaid(w):wPaid(w);
+    var posAct=isGroup?gAct(w):wAct(w);
+    var hourAct=isGroup?
+      (wHourlyTotal(w)+(w.paysFor||[]).reduce(function(s,id){var m=field.find(function(x){return x.id===id;});return s+(m?wHourlyTotal(m):0);},0)):
+      wHourlyTotal(w);
+    var dAct=posAct+hourAct; // ПОЛНОЕ начисление
+    var dPaid=isGroup?gReceived(w):wPaid(w);
     var dDebt=dAct-dPaid;
     var dC=wPaid(w,'cash'),dT=wPaid(w,'transfer'),dS=wPaid(w,'self');
-    var st=dAct===0?'none':dPaid>=dAct?'ok':dPaid>0?'part':'debt';
+    var st=dAct===0?'none':Math.abs(dDebt)<1?'ok':dPaid>0?'part':'debt';
     if(ft&&ft!==st)return;
     if(q&&w.name.toLowerCase().indexOf(q)<0&&(w.email||'').toLowerCase().indexOf(q)<0)return;
-    totPos+=dPos;totAct+=dAct;totC+=dC;totT+=dT;totS+=dS;totPaid+=dPaid;
+    totPos+=dPos;totAct+=dAct;totPaid+=dPaid;
 
     var exp=_expandedRows[w.id];
-    var expBtn=isGroup?'<button class="exp-btn" data-eid="'+w.id+'" onclick="toggleExpand(this.dataset.eid)" title="'+(exp?'Свернуть':'Развернуть')+'">'+(exp?'▼ ':'▶ ')+'</button>':'';
-    var groupBadge=isGroup?'<span class="member-tag">группа · '+(w.paysFor||[]).length+' чел.</span>':'';
-    var hh=wHourlyH(w);var hourlyBadge=hh?'<span class="member-tag" style="background:rgba(255,160,0,.15);color:var(--amber)">⏱ '+hh+'ч</span>':'';
+    var expBtn=isGroup?'<button class="exp-btn" data-eid="'+w.id+'" onclick="toggleExpand(this.dataset.eid)" title="'+(exp?'Свернуть':'Развернуть')+'">'+(exp?'▼':'▶')+'</button>':'<span style="display:inline-block;width:18px"></span>';
+    var groupBadge=isGroup?'<span class="member-tag">'+w.paysFor.length+' чел.</span>':'';
+    var hh=wHourlyH(w);
+    var hourlyBadge=hh?'<span class="member-tag" style="background:var(--amber-bg);color:var(--amber)">⏱'+hh+'ч</span>':'';
+
+    // Accrual display: positions + hourly separately
+    var actCell=posAct?'<span class="mono" style="font-size:11px">'+fmt(posAct)+'</span>':'—';
+    if(hourAct) actCell+='<span style="color:var(--amber);font-size:10px;font-family:monospace;margin-left:3px">+'+fmt(hourAct)+'</span>';
+    if(dAct) actCell+='<br><span class="mono" style="font-size:11px;font-weight:700">='+fmt(dAct)+' ₽</span>';
+
+    // Debt display
+    var debtCell=Math.abs(dDebt)<1?
+      '<span style="color:var(--green);font-size:12px">✓</span>':
+      dDebt>0?'<span class="mono" style="color:var(--red);font-size:11px;font-weight:600">'+fmt(Math.round(dDebt))+'</span>':
+      '<span class="mono" style="color:var(--amber);font-size:10px">авнс</span>';
 
     rows.push('<tr class="hov">'+
-      '<td>'+expBtn+'</td>'+
-      '<td><b>'+esc(w.name)+'</b>'+groupBadge+'</td>'+
-      '<td style="font-size:11px;color:var(--muted)">'+esc(w.email||'')+'</td>'+
-      '<td class="r mono">'+fmt(dPos)+'</td>'+
-      '<td class="r mono" style="font-weight:500">'+(dAct?fmt(dAct)+' ₽':'—')+'</td>'+
-      '<td class="r">'+(dC?'<span class="pill pg">'+fmt(dC)+'</span>':'—')+'</td>'+
-      '<td class="r">'+(dT?'<span class="pill pt">'+fmt(dT)+'</span>':'—')+'</td>'+
-      '<td class="r">'+(dS?'<span class="pill ps">'+fmt(dS)+'</span>':'—')+'</td>'+
-      '<td class="r mono" style="color:'+(dDebt>0?'var(--red)':dDebt<0?'var(--amber)':'var(--muted)')+';">'+(dDebt>0?fmt(dDebt)+' ₽':dDebt<0?'перепл.':'—')+'</td>'+
+      '<td style="width:22px">'+expBtn+'</td>'+
+      '<td style="min-width:140px"><b>'+esc(w.name)+'</b>'+groupBadge+hourlyBadge+'</td>'+
+      '<td style="font-size:11px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis">'+esc(w.email||'')+'</td>'+
+      '<td class="r mono" style="font-size:11px;color:var(--muted)">'+fmt(dPos)+'</td>'+
+      '<td class="r" style="min-width:110px">'+actCell+'</td>'+
+      '<td class="r mono" style="font-size:11px">'+(dPaid?fmt(dPaid)+' ₽':'—')+'</td>'+
+      '<td class="r" style="min-width:70px">'+debtCell+'</td>'+
       '<td>'+stBadge(st)+'</td>'+
-      '<td style="text-align:right"><button class="bi" onclick="openFldModal(\''+w.id+'\',false)">✏️</button>'+(!isGroup?'<button class="bi del" onclick="delFld(\''+w.id+'\')">×</button>':'')+'</td></tr>');
+      '<td style="text-align:right;white-space:nowrap"><button class="bi" onclick="openFldModal(\''+w.id+'\',false)" title="Редактировать">✏️</button>'+(!isGroup?'<button class="bi del" onclick="delFld(\''+w.id+'\')" title="Удалить">×</button>':'')+'</td></tr>');
 
-    // Expanded member rows
+    // ── EXPANDED GROUP ──
     if(isGroup&&exp){
-      var grpAct=gAct(w); var grpRec=gReceived(w); var grpDebt=grpAct-grpRec;
-      var dh='<tr class="sub"><td></td><td colspan="10" style="padding:6px 10px 8px 22px">';
-      dh+='<div style="background:var(--accent-bg);border:1px solid rgba(79,125,255,.2);border-radius:8px;padding:12px 14px">';
-      dh+='<div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:10px">'+
-          esc(w.name.split(' ')[0])+' — распределение по группе'+
-          '<span style="font-weight:400;color:var(--muted);margin-left:8px">получено '+fmt(grpRec)+' ₽ из '+fmt(grpAct)+' ₽</span></div>';
-      dh+='<table style="width:100%;border-collapse:collapse">';
-      dh+='<tr style="font-size:9px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px">';
-      dh+='<td style="padding-bottom:6px">Сотрудник</td>';
-      dh+='<td style="text-align:right;padding-bottom:6px;padding-right:8px">Тарификация</td>';
-      dh+='<td style="text-align:right;padding-bottom:6px;padding-right:8px">Начислено</td>';
-      dh+='<td style="text-align:right;padding-bottom:6px;padding-right:8px">Доля получена</td>';
-      dh+='<td style="text-align:right;padding-bottom:6px">Остаток</td></tr>';
+      var grpFullAct=gFullAct(w); var grpRec=gReceived(w); var grpDebt2=grpFullAct-grpRec;
+      var dh='<tr class="sub"><td></td><td colspan="8" style="padding:5px 8px 10px 16px">';
+      dh+='<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden">';
 
-      function rateBreakdown(ww){
-        var parts=(ww.positions||[]).filter(function(p){return p.count>0;}).map(function(p){
-          return fmt(p.count)+'×'+fmt(p.rate)+'₽';
-        });
-        return parts.length?parts.join(' + '):('40₽×'+fmt(wPos(ww)));
-      }
+      // Header
+      dh+='<div style="padding:9px 12px;background:var(--accent-bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">';
+      dh+='<span style="font-size:11px;font-weight:600;color:var(--accent)">Детализация группы '+esc(w.name.split(' ')[0])+'</span>';
+      dh+='<span style="font-size:10px;color:var(--muted)">получено <b style="color:var(--green)">'+fmt(grpRec)+' ₽</b> из <b>'+fmt(grpFullAct)+' ₽</b> начислено</span>';
+      dh+='</div>';
 
-      // Render one row per person
-      function memberRow(ww, isLdr){
-        var acc2=wAct(ww);
-        var share=isLdr?memberShare(ww,ww):(grpAct>0?grpRec*(acc2/grpAct)+wPaid(ww):wPaid(ww));
-        if(!isLdr) share=memberShare(ww,w);
-        var debt2=acc2-share;
+      // Table header
+      dh+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
+      dh+='<tr style="background:var(--subtle)">';
+      dh+='<td style="padding:5px 10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Сотрудник</td>';
+      dh+='<td style="padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:right">Позиции</td>';
+      dh+='<td style="padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:right">Доп.работа</td>';
+      dh+='<td style="padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:right">Итого</td>';
+      dh+='<td style="padding:5px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:right">Доля</td>';
+      dh+='<td style="padding:5px 10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:right">Остаток</td>';
+      dh+='</tr>';
+
+      function memberDetailRow(ww, isLdr){
+        var wAcc=wAct(ww); var wHrly=wHourlyTotal(ww); var wFull=wAcc+wHrly;
+        var share=memberFullShare(ww,w);
+        var debt2=wFull-share;
+        var pct=grpFullAct>0?Math.round(wFull/grpFullAct*100):0;
+
+        // Rate breakdown short
+        var rb=(ww.positions||[]).filter(function(p){return p.count>0;}).map(function(p){
+          return'<span style="color:var(--muted)">'+fmt(p.count)+'×'+p.rate+'</span>';
+        }).join('<span style="color:var(--muted)">+</span>');
+
+        // Hourly breakdown short
+        var hb=(ww.hourlyWork||[]).length?
+          '<span style="color:var(--amber)">'+fmt(wHrly)+'₽</span>'+
+          '<span style="color:var(--muted);font-size:9px"> ('+ww.hourlyWork.length+'зап)</span>':'—';
+
         var debtStr=Math.abs(debt2)<1?
-          '<b style="color:var(--green)">✓ погашено</b>':
-          debt2>0?
-            '<b style="color:var(--red)">−'+fmt(Math.round(debt2))+' ₽</b>':
-            '<b style="color:var(--amber)">+'+fmt(Math.round(-debt2))+' ₽</b>';
-        return'<tr style="border-top:1px solid var(--border)">'+
-          '<td style="padding:5px 8px 5px 0;font-weight:'+(isLdr?'600':'400')+'">'+esc(ww.name)+(isLdr?'<span style="font-size:9px;color:var(--accent);margin-left:4px">лидер</span>':'')+'</td>'+
-          '<td style="text-align:right;padding:5px 8px;color:var(--muted);font-size:10px;font-family:monospace">'+rateBreakdown(ww)+'</td>'+
-          '<td style="text-align:right;padding:5px 8px;font-family:monospace">'+fmt(acc2)+' ₽</td>'+
-          '<td style="text-align:right;padding:5px 8px;font-family:monospace;color:var(--green)">'+fmt(Math.round(share))+' ₽</td>'+
-          '<td style="text-align:right;padding:5px 0;font-family:monospace">'+debtStr+'</td></tr>';
+          '<span style="color:var(--green);font-weight:700">✓</span>':
+          debt2>0?'<span style="color:var(--red);font-weight:600">−'+fmt(Math.round(debt2))+'</span>':
+          '<span style="color:var(--amber);font-size:10px">+'+fmt(Math.round(-debt2))+'</span>';
+
+        return'<tr style="border-top:1px solid var(--border)'+(isLdr?';background:var(--hov)':'')+'">'+
+          '<td style="padding:6px 10px">'+
+            (isLdr?'<b>':'<span style="color:var(--muted);margin-right:4px">↳</span>')+
+            esc(ww.name)+
+            (isLdr?'</b><span style="font-size:9px;background:var(--accent-bg);color:var(--accent);border-radius:3px;padding:1px 4px;margin-left:4px">лидер</span>':'')+
+            '</td>'+
+          '<td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:10px">'+rb+'<br><span style="font-weight:600">'+fmt(wAcc)+'₽</span></td>'+
+          '<td style="padding:6px 8px;text-align:right;font-size:10px">'+hb+'</td>'+
+          '<td style="padding:6px 8px;text-align:right;font-family:monospace;font-weight:700">'+fmt(wFull)+'₽</td>'+
+          '<td style="padding:6px 8px;text-align:right;font-family:monospace;color:var(--green)">'+fmt(Math.round(share))+'₽<br><span style="font-size:9px;color:var(--muted)">'+pct+'%</span></td>'+
+          '<td style="padding:6px 10px;text-align:right;font-family:monospace">'+debtStr+'</td>'+
+          '</tr>';
       }
 
-      dh+=memberRow(w, true);
+      dh+=memberDetailRow(w, true);
       (w.paysFor||[]).forEach(function(mid2){
-        var mb=field.find(function(x){return x.id===mid2;}); if(!mb)return;
-        dh+=memberRow(mb, false);
+        var mb=field.find(function(x){return x.id===mid2;});if(!mb)return;
+        dh+=memberDetailRow(mb, false);
       });
 
-      // Totals
+      // Footer totals
       dh+='<tr style="border-top:2px solid var(--accent);background:var(--accent-bg)">';
-      dh+='<td style="padding:6px 8px 4px 0;font-weight:700">Итого группа</td>';
-      dh+='<td></td>';
-      dh+='<td style="text-align:right;padding:6px 8px 4px;font-family:monospace;font-weight:700">'+fmt(grpAct)+' ₽</td>';
-      dh+='<td style="text-align:right;padding:6px 8px 4px;font-family:monospace;font-weight:700;color:var(--green)">'+fmt(grpRec)+' ₽</td>';
-      dh+='<td style="text-align:right;padding:6px 0 4px;font-family:monospace;font-weight:700;color:'+(grpDebt>1?'var(--red)':grpDebt<-1?'var(--amber)':'var(--green)')+'">'+
-          (Math.abs(grpDebt)<1?'✓ закрыто':grpDebt>0?'−'+fmt(Math.round(grpDebt))+' ₽':'аванс '+fmt(Math.round(-grpDebt))+' ₽')+
+      dh+='<td style="padding:7px 10px;font-weight:700">Итого</td>';
+      dh+='<td style="padding:7px 8px;text-align:right;font-family:monospace;font-size:10px;color:var(--muted)">'+fmt(posAct)+'₽</td>';
+      dh+='<td style="padding:7px 8px;text-align:right;font-size:10px;color:var(--amber)">'+fmt(hourAct)+'₽</td>';
+      dh+='<td style="padding:7px 8px;text-align:right;font-family:monospace;font-weight:700">'+fmt(grpFullAct)+'₽</td>';
+      dh+='<td style="padding:7px 8px;text-align:right;font-family:monospace;color:var(--green);font-weight:700">'+fmt(grpRec)+'₽</td>';
+      dh+='<td style="padding:7px 10px;text-align:right;font-family:monospace;font-weight:700;color:'+(grpDebt2>1?'var(--red)':grpDebt2<-1?'var(--amber)':'var(--green)')+'">'+
+          (Math.abs(grpDebt2)<1?'✓ закрыто':grpDebt2>0?'−'+fmt(Math.round(grpDebt2))+'₽':'авнс '+fmt(Math.round(-grpDebt2))+'₽')+
           '</td></tr>';
       dh+='</table></div></td></tr>';
       rows.push(dh);
 
-      // Member sub-rows
+      // Sub-rows for members
       (w.paysFor||[]).forEach(function(mid){
-        var m=field.find(function(x){return x.id===mid;}); if(!m)return;
-        var mPos=wPos(m); var mAct=wAct(m);
-        var rbd=(m.positions||[]).filter(function(p){return p.count>0;}).map(function(p){return fmt(p.rate)+'₽×'+fmt(p.count);}).join(' + ')||'40₽×'+fmt(mPos);
+        var m=field.find(function(x){return x.id===mid;});if(!m)return;
+        var mFull=fullAct(m);
+        var mShare=memberFullShare(m,w);
+        var mDebt=mFull-mShare;
+        var mSt=Math.abs(mDebt)<1?'ok':mDebt>0?'part':'debt';
         rows.push('<tr class="sub">'+
           '<td></td>'+
-          '<td style="padding-left:22px"><span style="color:var(--muted);margin-right:5px">↳</span>'+esc(m.name)+
-            '<button class="bi" style="font-size:11px;margin-left:5px" data-mid="'+m.id+'" onclick="openFldModal(this.dataset.mid,true)" title="Карточка">✏️</button></td>'+
+          '<td style="padding-left:28px;padding-top:4px;padding-bottom:4px">'+
+            '<span style="color:var(--muted);margin-right:5px">↳</span>'+
+            '<b style="font-size:12px">'+esc(m.name)+'</b>'+
+            '<button class="bi" style="font-size:11px;margin-left:4px" onclick="openFldModal(\''+m.id+'\',true)" title="Редактировать">✏️</button>'+
+          '</td>'+
           '<td style="font-size:11px;color:var(--muted)">'+esc(m.email||'')+'</td>'+
-          '<td class="r mono">'+fmt(mPos)+'</td>'+
-          '<td class="r mono" style="font-weight:600">'+fmt(mAct)+' ₽</td>'+
-          '<td colspan="2" style="text-align:left;padding-left:6px;font-size:10px;color:var(--muted);font-family:monospace">'+rbd+'</td>'+
-          '<td style="text-align:center;font-size:11px;color:var(--muted)">через '+esc(w.name.split(' ')[0])+'</td>'+
-          '<td class="r mono" style="color:var(--purple);font-weight:600">'+fmt(mAct)+' ₽</td>'+
+          '<td class="r mono" style="font-size:11px;color:var(--muted)">'+fmt(wPos(m))+'</td>'+
+          '<td class="r" style="font-size:11px"><span class="mono">'+fmt(wAct(m))+'</span>'+(wHourlyTotal(m)?'<span style="color:var(--amber);font-size:10px;margin-left:2px">+'+fmt(wHourlyTotal(m))+'</span>':'')+'<br><span class="mono" style="font-weight:700;font-size:11px">='+fmt(mFull)+'₽</span></td>'+
+          '<td class="r mono" style="font-size:11px">'+fmt(Math.round(mShare))+'₽</td>'+
+          '<td class="r mono" style="font-size:11px;color:'+(mDebt>1?'var(--red)':mDebt<-1?'var(--amber)':'var(--green)')+'">'+
+            (Math.abs(mDebt)<1?'✓':mDebt>0?'−'+fmt(Math.round(mDebt)):'+'+fmt(Math.round(-mDebt)))+'</td>'+
+          '<td>'+stBadge(mSt)+'</td>'+
           '<td></td></tr>');
       });
     }
 
-
     if(wPos(w)>0)idx++;
   });
 
-  tb.innerHTML=rows.join('')||'<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">Нет сотрудников</td></tr>';
+  // Update table headers to match new columns
+  var thead=document.querySelector('#page-field thead tr');
+  if(thead){
+    thead.innerHTML=
+      '<th style="width:22px"></th>'+
+      '<th>Сотрудник</th>'+
+      '<th>Email</th>'+
+      '<th class="r">Поз.</th>'+
+      '<th class="r">Начислено</th>'+
+      '<th class="r">Выплачено</th>'+
+      '<th class="r">Остаток</th>'+
+      '<th>Статус</th>'+
+      '<th style="width:60px"></th>';
+  }
+
+  tb.innerHTML=rows.join('')||'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:32px"><div class="empty-state"><div class="icon">👥</div><p>Нет сотрудников</p></div></td></tr>';
+
+  var tfEl=document.getElementById('tf-field');
+  if(tfEl){
+    var posAmt=field.filter(function(w){return!isMember(w);}).reduce(function(s,w){return s+gAct(w);},0);
+    var hrlyAmt=field.filter(function(w){return!isMember(w);}).reduce(function(s,w){
+      return s+wHourlyTotal(w)+(w.paysFor||[]).reduce(function(ss,id){var m=field.find(function(x){return x.id===id;});return ss+(m?wHourlyTotal(m):0);},0);
+    },0);
+    tfEl.innerHTML=
+      '<b>'+totPos+'</b> поз · '+
+      'позиции <b class="mono">'+fmt(posAmt)+'</b> ₽ · '+
+      'доп. работа <b class="mono" style="color:var(--amber)">'+fmt(hrlyAmt)+'</b> ₽ · '+
+      'итого <b class="mono">'+fmt(posAmt+hrlyAmt)+'</b> ₽ · '+
+      'выплачено <b class="mono" style="color:var(--green)">'+fmt(totPaid)+'</b> ₽';
+  }
+
+  // Update sync badge
+  var sb=document.getElementById('sync-badge');
+  if(sb){sb.textContent='📊 '+fmt(totPos)+' поз · '+fmt(posAmt+hrlyAmt)+' ₽';}
+}
   document.getElementById('tf-field').innerHTML=
     '<b>'+workers.length+'</b> чел. &nbsp; Поз.: <b class="mono">'+fmt(totPos)+'</b> &nbsp; Нач.: <b class="mono">'+fmt(totAct)+'</b> ₽ &nbsp; Нал: <b class="mono" style="color:var(--green)">'+fmt(totC)+'</b> &nbsp; Перевод: <b class="mono" style="color:var(--teal)">'+fmt(totT)+'</b> &nbsp; Самозан.: <b class="mono" style="color:var(--purple)">'+fmt(totS)+'</b> &nbsp; Долг: <b class="mono" style="color:var(--red)">'+fmt(Math.max(0,totAct-totPaid))+'</b> ₽';
   var note=document.getElementById('fld-note');
